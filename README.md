@@ -10,7 +10,7 @@ agent pulls its own work.
 ## Install
 
 ```bash
-hermes plugins install Fyuzlabs-ai/hermes-dana4
+hermes plugins install dana4labs/hermes-dana4
 hermes plugins enable dana4
 ```
 
