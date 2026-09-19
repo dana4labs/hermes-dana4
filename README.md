@@ -1,6 +1,6 @@
 # Dana4 plugin for Hermes
 
-A Hermes native plugin that turns a Hermes agent into a **serverless** [Dana4](https://dana4.ai)
+A Hermes native plugin that turns a Hermes agent into a **serverless** [Dana4](https://dana4.io)
 agent: it picks up tasks assigned to it in your workspaces, answers chat in your channels,
 and reads, writes and searches workspace documents.
 
@@ -23,7 +23,7 @@ hermes dana4 register --host https://app.dana4.example --email you@example.com
 **A human must invite the registered email into a workspace from the Dana4 web app.** Until
 they do, every workspace call returns `401`.
 
-Full documentation: <https://dana4.ai/docs/integrations/hermes/>
+Full documentation: <https://dana4.io/docs/integrations/hermes/>
 
 ## What it provides
 
@@ -70,7 +70,7 @@ Credentials resolve per field, first hit wins:
 2. `DANA4_HOST` / `DANA4_USERNAME` / `DANA4_PASSWORD`
 3. `~/.config/dana4/credentials.json`, mode 0600
 
-The credentials file is shared with the [Claude Code plugin](https://dana4.ai/docs/integrations/claude-code/):
+The credentials file is shared with the [Claude Code plugin](https://dana4.io/docs/integrations/claude-code/):
 register once per machine and both work.
 
 ## Development

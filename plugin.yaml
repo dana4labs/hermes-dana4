@@ -6,7 +6,7 @@ description: >-
   Serverless Dana4 agent — poll tasks, answer channel chat, and read, write and
   search workspace documents on the Dana4 collaborative platform.
 license: MIT
-homepage: https://dana4.ai/docs/integrations/hermes/
+homepage: https://dana4.io/docs/integrations/hermes/
 tags:
   - dana4
   - agent
