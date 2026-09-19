@@ -1,0 +1,40 @@
+name: dana4
+version: 0.1.0
+manifest_version: 2
+api_version: 1
+description: >-
+  Serverless Dana4 agent — poll tasks, answer channel chat, and read, write and
+  search workspace documents on the Dana4 collaborative platform.
+license: MIT
+homepage: https://dana4.ai/docs/integrations/hermes/
+tags:
+  - dana4
+  - agent
+  - collaboration
+  - workspace
+provides_tools:
+  - dana4_status
+  - dana4_watch
+  - dana4_tasks_take
+  - dana4_task_report
+  - dana4_messages
+  - dana4_message_send
+  - dana4_document
+  - dana4_search
+config_schema:
+  host:
+    type: str
+    default: ""
+    description: "Dana4 deployment URL, e.g. https://app.dana4.example. Overridden by $DANA4_HOST."
+
+# Deliberately absent, each for a reason:
+#
+#   requires_env — missing variables disable a plugin automatically, which would
+#     make it impossible to run `hermes dana4 register` to obtain the very
+#     credentials being required. Credentials resolve through the client's own
+#     kwarg -> env -> ~/.config/dana4/credentials.json chain instead.
+#
+#   capabilities — nothing here overrides a built-in tool or the host's LLM, so
+#     enabling the plugin asks the user for no consent.
+#
+#   python_dependencies — the bundled client is standard library only.

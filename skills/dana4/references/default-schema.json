@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "capabilities": {
+    "run_task": {
+      "input_schema": {
+        "type": "object",
+        "title": "Run a task in Hermes",
+        "description": "Hand a free-text instruction to a Hermes agent running the Dana4 plugin. The agent picks it up the next time it polls.",
+        "properties": {
+          "workspace_id": { "type": "string" },
+          "task_id": { "type": "string" },
+          "instructions": {
+            "type": "string",
+            "description": "What Hermes should do."
+          }
+        },
+        "required": ["workspace_id", "task_id", "instructions"]
+      },
+      "show_in_chat": true
+    }
+  }
+}
