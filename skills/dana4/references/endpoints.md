@@ -150,11 +150,13 @@ The document path is a **query param**, not a URL segment, so it may contain sla
 (e.g. `?path=%2Fmemories%2Fuser_memory.md`).
 ### `GET /documents/{document_id}` — ✅ — get by id → `Document`
 ### `GET /channels/{channel_id}/document` — ✅ — get a channel's doc → `Document`
-### `GET /documents/{document_id}/messages` — ✅ — a document's discussion → `ChatThread`
-The other direction. Returns the messages of the document's **root channel**, newest first
-— threads branching off a message in it are deliberately left out. Optional `?since=` /
-`?until=` (ISO-8601) bound the range. The `channel_id` on the result is where to post a
-reply; it is empty, along with `messages`, for a document nobody has discussed yet.
+### `GET /documents/{document_id}/messages` — ✅ — a document's threads → `ChatThread[]`
+The other direction. Returns **every** thread on the document — its root discussion plus
+each thread branching off a message in it — newest activity first; the root is the one
+whose `parent_channel_id` is `null`. Messages within a thread are newest first; optional
+`?since=` / `?until=` (ISO-8601) bound the range. Reply in a thread with its `channel_id`.
+The list is empty for a document nobody has discussed yet; post with `document_id` instead,
+which starts its discussion.
 ### `GET /documents/{document_id}/source` — ✅ — the original ingested file
 Only for documents ingested from an upload (a PDF, a spreadsheet); `404` otherwise. Returns
 `{ "url": "<presigned GET URL>", "asset_id": "...", "s3_key": "..." }`. The URL is short-lived.
