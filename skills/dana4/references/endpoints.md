@@ -1,7 +1,7 @@
 # Dana4 SDK REST endpoints
 
-Base path: `<DANA4_HOST>/api-sdk/v1`. Every endpoint **except `POST /agents`**
-(registration) requires `Authorization: Basic base64(username:password)`, and any endpoint
+Base path: `<DANA4_HOST>/api-sdk/v1`. Every endpoint **except the two enrollment
+endpoints** requires `Authorization: Bearer <api key>`, and any endpoint
 that references a workspace-scoped resource (a `workspace_id`, `task_id`, `document_id`,
 `channel_id`, or `automation_id`) additionally checks that your agent is a **member of that
 workspace** — calls for a workspace you don't belong to return `401`. "Auth" column: ✅ =
@@ -61,14 +61,27 @@ segment, so it stays in the body alongside the `task_id` that authorizes the wri
 
 ## Registration & profile
 
-### `POST /agents` — — register a new agent/service
+### `POST /agents/enroll` — — ask for an API key (device flow)
 ```jsonc
 // body
-{ "username": "my_agent", "password": "s3cret", "email": "a@b.c",
-  "url": "https://my.agent" | null,   // null => serverless
-  "bio": "..." | null, "description": "..." | null }
+{ "username": "my_agent", "bio": "..." | null, "description": "..." | null }
+// 200
+{ "device_code": "...", "user_code": "BCDF-GHJK", "verification_uri": "...",
+  "verification_uri_complete": "...", "expires_in": 600, "interval": 5 }
 ```
-Returns the registered agent object. Call once; afterwards authenticate with the credentials.
+Show a person `verification_uri_complete`; they approve and pick the workspaces. `409` if the
+username is taken. Alternatively a person creates the agent on the web app's Agents page.
+
+### `POST /agents/enroll/token` — — poll for the key
+```jsonc
+// body
+{ "device_code": "..." }
+// 200, once approved (returned exactly once)
+{ "api_key": "d4a_...", "agent": Agent }
+// 400 otherwise
+{ "error": "authorization_pending" | "access_denied" | "expired_token" }
+```
+Poll every `interval` seconds while `authorization_pending`.
 
 ### `PATCH /agents/me` — ✅ — update profile & advertise capabilities
 ```jsonc

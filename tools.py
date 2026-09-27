@@ -52,9 +52,9 @@ def _tool(fn):
             out: Dict[str, Any] = {"error": str(e), "status": e.status}
             if e.status == 401:
                 out["hint"] = (
-                    "401 is almost always a missing workspace invite, not a bad "
-                    "password. A human must invite the agent's registered email "
-                    "into the workspace from the Dana4 web app."
+                    "401 on one workspace: the agent is not in it (its owner adds "
+                    "it from the workspace's members panel). 401 on everything: "
+                    "the API key was rotated or the agent deleted."
                 )
             return _ok(out)
         except KeyError as e:
@@ -62,7 +62,7 @@ def _tool(fn):
         except ValueError as e:
             # Dana4Client raises this when no host or no credentials are set.
             return _ok(
-                {"error": str(e), "hint": "run `hermes dana4 register` first"}
+                {"error": str(e), "hint": "run `hermes dana4 enroll` first"}
             )
         except Exception as e:  # never let a tool break the turn
             return _ok({"error": f"{type(e).__name__}: {e}"})
@@ -88,8 +88,8 @@ def dana4_status(args):
         "credentials_file": str(creds_path()),
         "credentials_file_exists": bool(stored),
         "note": (
-            "Serverless agents always show Offline in Dana4 — there is no health "
-            "endpoint to ping. That is expected and does not need fixing."
+            "Dana4 shows the agent Online only while it polls; Offline between "
+            "polls is expected and does not need fixing."
         ),
     }
     try:
@@ -97,12 +97,11 @@ def dana4_status(args):
     except ValueError as e:
         out["host"] = ""
         out["error"] = str(e)
-        out["hint"] = "no host configured — run `hermes dana4 register`"
+        out["hint"] = "no host configured — run `hermes dana4 enroll`"
         return out
 
     out["host"] = client.host
-    out["username"] = client.username
-    out["password_set"] = bool(client.password)
+    out["api_key_set"] = bool(client.api_key)
 
     workspace_id = args.get("workspace_id")
     for key, call in (
@@ -119,12 +118,12 @@ def dana4_status(args):
             out[key] = call()
         except (Dana4Error, ValueError) as e:
             out.setdefault("errors", {})[key] = str(e)
-    if "errors" in out and not client.username:
-        out["hint"] = "not registered yet — run `hermes dana4 register`"
+    if "errors" in out and not client.api_key:
+        out["hint"] = "not enrolled yet — run `hermes dana4 enroll`"
     elif "errors" in out:
         out["hint"] = (
-            "if these are 401s, the agent's email is probably not invited into "
-            "the workspace yet; a human has to do that from the Dana4 web app"
+            "if these are 401s, the API key was rotated or the agent deleted; "
+            "its owner can issue a new key on the Agents page"
         )
     return out
 
@@ -351,7 +350,7 @@ SCHEMAS = {
     "dana4_status": {
         "name": "dana4_status",
         "description": (
-            "Show the Dana4 connection (host, username, whether a password is "
+            "Show the Dana4 connection (host, whether an API key is "
             "stored), the agent's active and assigned tasks, and — with a "
             "workspace_id — that workspace's blockers. Read-only. Start here "
             "when something is not working."
@@ -594,7 +593,7 @@ def slash_dana4(raw_args: str) -> str:
     if sub in ("help", "-h", "--help"):
         return (
             "/dana4 status [workspace_id] — connection, open tasks, blockers\n"
-            "hermes dana4 register       — register this agent (once, at setup)\n"
+            "hermes dana4 enroll         — connect this agent (once, at setup)\n"
             "hermes dana4 creds          — show what is configured, offline\n"
             "Ask in plain language for anything else: 'check my Dana4 tasks'."
         )
@@ -606,8 +605,7 @@ def slash_dana4(raw_args: str) -> str:
     )
     lines = [
         f"host:     {payload.get('host') or '(not set)'}",
-        f"username: {payload.get('username') or '(not registered)'}",
-        f"password: {'stored' if payload.get('password_set') else 'MISSING'}",
+        f"api key:  {'stored' if payload.get('api_key_set') else 'MISSING — run hermes dana4 enroll'}",
     ]
     for label, key in (
         ("active", "active_tasks"),

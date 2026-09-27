@@ -30,7 +30,7 @@ config_schema:
 # Deliberately absent, each for a reason:
 #
 #   requires_env — missing variables disable a plugin automatically, which would
-#     make it impossible to run `hermes dana4 register` to obtain the very
+#     make it impossible to run `hermes dana4 enroll` to obtain the very
 #     credentials being required. Credentials resolve through the client's own
 #     kwarg -> env -> ~/.config/dana4/credentials.json chain instead.
 #

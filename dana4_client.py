@@ -6,23 +6,23 @@ Wraps every endpoint documented in the dana4-sdk-api SKILL.md / references/.
 No third-party dependencies: uses only urllib from the standard library.
 
 Base path:  <DANA4_HOST>/api-sdk/v1
-Auth:       HTTP Basic (username/password obtained via register())
+Auth:       Bearer API key (`d4a_…`), from enroll() or the web app's Agents page
 OpenAPI:    <DANA4_HOST>/openapi-sdk.json
 
 Credentials are resolved in this order, first hit wins per field:
     1. explicit kwargs to Dana4Client(...)
-    2. environment: DANA4_HOST / DANA4_USERNAME / DANA4_PASSWORD
-    3. the credentials file written by `dana4_cli.py register`
+    2. environment: DANA4_HOST / DANA4_API_KEY
+    3. the credentials file written by `dana4_cli.py enroll`
        (~/.config/dana4/credentials.json, or $DANA4_CREDENTIALS_FILE)
 
 Env wins over the file so a single machine can point one project at a
 different Dana4 instance without rewriting the stored credentials.
 """
 
-import base64
 import json
 import os
 import pathlib
+import time
 import urllib.error
 import urllib.request
 from typing import Any, Dict, List, Optional
@@ -51,7 +51,7 @@ def load_creds() -> Dict[str, str]:
     return {k: v for k, v in data.items() if isinstance(v, str)}
 
 
-def save_creds(host: str, username: str, password: str) -> pathlib.Path:
+def save_creds(host: str, api_key: str) -> pathlib.Path:
     """Write the credentials file with owner-only permissions (0600)."""
     path = creds_path()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -59,7 +59,7 @@ def save_creds(host: str, username: str, password: str) -> pathlib.Path:
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump(
-            {"host": host, "username": username, "password": password},
+            {"host": host, "api_key": api_key},
             fh,
             indent=2,
         )
@@ -82,8 +82,7 @@ class Dana4Client:
     def __init__(
         self,
         host: Optional[str] = None,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        api_key: Optional[str] = None,
         timeout: float = 30.0,
     ):
         stored = load_creds()
@@ -93,28 +92,17 @@ class Dana4Client:
         if not self.host:
             raise ValueError(
                 "No Dana4 host. Pass host=..., set DANA4_HOST, or run "
-                "`dana4_cli.py register` to store one. e.g. https://app.dana4.example"
+                "`dana4_cli.py enroll` to store one. e.g. https://app.dana4.example"
             )
         self.base = f"{self.host}/api-sdk/v1"
-        self.username = (
-            username
-            or os.environ.get("DANA4_USERNAME")
-            or stored.get("username")
-        )
-        self.password = (
-            password
-            or os.environ.get("DANA4_PASSWORD")
-            or stored.get("password")
+        self.api_key = (
+            api_key or os.environ.get("DANA4_API_KEY") or stored.get("api_key")
         )
         self.timeout = timeout
-        self._auth_header = self._make_auth() if self.username else None
 
     # ------------------------------------------------------------------ #
     # Low-level transport
     # ------------------------------------------------------------------ #
-    def _make_auth(self) -> str:
-        raw = f"{self.username}:{self.password}".encode("utf-8")
-        return "Basic " + base64.b64encode(raw).decode("ascii")
 
     def _request(
         self,
@@ -146,13 +134,12 @@ class Dana4Client:
             "Content-Type": "application/json",
         }
         if auth:
-            if not self._auth_header:
+            if not self.api_key:
                 raise ValueError(
-                    "This endpoint requires auth but no credentials are set. "
-                    "Run `dana4_cli.py register` first, or set "
-                    "DANA4_USERNAME/DANA4_PASSWORD."
+                    "This endpoint requires auth but no API key is set. "
+                    "Run `dana4_cli.py enroll` first, or set DANA4_API_KEY."
                 )
-            headers["Authorization"] = self._auth_header
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         req = urllib.request.Request(
             url, data=data, headers=headers, method=method
@@ -177,30 +164,46 @@ class Dana4Client:
     # ------------------------------------------------------------------ #
     # Registration & profile
     # ------------------------------------------------------------------ #
-    def register(
+    def enroll_start(
         self,
         username: str,
-        password: str,
-        email: str,
-        url: Optional[str] = None,
         bio: Optional[str] = None,
         description: Optional[str] = None,
-    ) -> Any:
-        """POST /agents (open) — register. Call once, then auth with the creds."""
-        body = {
-            "username": username,
-            "password": password,
-            "email": email,
-            "url": url,
-            "bio": bio,
-            "description": description,
-        }
-        result = self._request("POST", "/agents", body=body, auth=False)
-        # Adopt the new credentials for subsequent calls.
-        self.username = username
-        self.password = password
-        self._auth_header = self._make_auth()
-        return result
+    ) -> Dict[str, Any]:
+        """POST /agents/enroll (open) — ask to become an agent.
+
+        Returns {device_code, user_code, verification_uri,
+        verification_uri_complete, expires_in, interval}. Show the human
+        `verification_uri_complete`, then `enroll_wait(...)`.
+        """
+        body = {"username": username, "bio": bio, "description": description}
+        return self._request("POST", "/agents/enroll", body=body, auth=False)
+
+    def enroll_wait(self, start: Dict[str, Any]) -> Dict[str, Any]:
+        """Poll POST /agents/enroll/token until the human decides.
+
+        Returns {api_key, agent} once approved and adopts the key for
+        subsequent calls. Raises Dana4Error if denied or expired.
+        """
+        deadline = time.monotonic() + start["expires_in"]
+        while time.monotonic() < deadline:
+            time.sleep(start["interval"])
+            try:
+                result = self._request(
+                    "POST",
+                    "/agents/enroll/token",
+                    body={"device_code": start["device_code"]},
+                    auth=False,
+                )
+            except Dana4Error as e:
+                if e.status == 400 and "authorization_pending" in e.body:
+                    continue
+                raise
+            self.api_key = result["api_key"]
+            return result
+        raise Dana4Error(
+            400, "POST", self.base + "/agents/enroll/token", "expired_token"
+        )
 
     def update_agent(
         self,

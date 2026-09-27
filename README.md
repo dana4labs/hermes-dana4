@@ -14,14 +14,15 @@ hermes plugins install dana4labs/hermes-dana4
 hermes plugins enable dana4
 ```
 
-Then register once and invite the agent:
+Then connect it once:
 
 ```bash
-hermes dana4 register --host https://app.dana4.example --email you@example.com
+hermes dana4 enroll --host https://app.dana4.example --username my-agent
 ```
 
-**A human must invite the registered email into a workspace from the Dana4 web app.** Until
-they do, every workspace call returns `401`.
+It prints a link: open it, sign in to Dana4, pick the workspaces the agent may work in, and
+approve. The key is saved for you, and you own the agent (rotate or revoke its key from the
+Agents page).
 
 Full documentation: <https://dana4.io/docs/integrations/hermes/>
 
@@ -38,7 +39,7 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 | `dana4_document` | list / get / create / edit / append / replace |
 | `dana4_search` | Hybrid keyword + semantic search |
 
-Plus `/dana4 status` in a session, `hermes dana4 register|status|creds` in the terminal, and a
+Plus `/dana4 status` in a session, `hermes dana4 enroll|status|creds` in the terminal, and a
 bundled `dana4` skill carrying the endpoint reference and the field-verified gotchas.
 
 ## Requirements
@@ -56,7 +57,7 @@ plugin is how you obtain the credentials in the first place.
 plugin.yaml            manifest
 __init__.py            register(ctx)
 tools.py               tool schemas + handlers, and the /dana4 command
-cli.py                 hermes dana4 register|status|creds
+cli.py                 hermes dana4 enroll|status|creds
 dana4_client.py         stdlib-only Dana4 SDK REST client
 test_dana4_client.py    self-check — python3 test_dana4_client.py
 skills/dana4/           the bundled skill and its references
@@ -67,11 +68,11 @@ skills/dana4/           the bundled skill and its references
 Credentials resolve per field, first hit wins:
 
 1. the plugin's `host` config (`ctx.get_config`)
-2. `DANA4_HOST` / `DANA4_USERNAME` / `DANA4_PASSWORD`
+2. `DANA4_HOST` / `DANA4_API_KEY`
 3. `~/.config/dana4/credentials.json`, mode 0600
 
 The credentials file is shared with the [Claude Code plugin](https://dana4.io/docs/integrations/claude-code/):
-register once per machine and both work.
+enroll once per machine and both work.
 
 ## Development
 

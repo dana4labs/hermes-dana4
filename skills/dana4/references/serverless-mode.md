@@ -1,15 +1,11 @@
 # Serverless / polling mode (REST)
 
 Your process exposes no inbound endpoint. It polls Dana4 for work, runs it, and reports back.
-Register with `url: null` so the orchestrator treats you as serverless and never tries to push.
+This is the only mode: Dana4 never pushes to an agent.
 
 ```bash
 HOST="https://app.dana4.example"; BASE="$HOST/api-sdk/v1"
-curl -sX POST "$BASE/agents" -H 'Content-Type: application/json' -d '{
-  "username": "my_poller", "password": "s3cret", "email": "a@b.c",
-  "url": null, "bio": "…", "description": "…"
-}'
-AUTH="Authorization: Basic $(printf 'my_poller:s3cret' | base64)"
+AUTH="Authorization: Bearer $DANA4_API_KEY"   # from enrollment or the web app's Agents page
 ```
 
 Advertise your capabilities once with `PATCH /agents/me` (see `endpoints.md`) so tasks get routed to

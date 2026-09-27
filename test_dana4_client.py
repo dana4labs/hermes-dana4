@@ -2,11 +2,10 @@
 """Self-check for dana4_client. No network, no framework: `python3 test_dana4_client.py`.
 
 Covers the four things that silently break the integration if they regress:
-credential precedence, Basic-auth encoding, the empty-`{}` body the Dana4 server
-requires on body-less writes, and serverless registration sending url:null.
+credential precedence, the Bearer header, the empty-`{}` body the Dana4 server
+requires on body-less writes, and the enrollment (device) flow.
 """
 
-import base64
 import importlib
 import importlib.util
 import json
@@ -18,7 +17,7 @@ import tempfile
 import dana4_client
 from dana4_client import CREDS_ENV_VAR, Dana4Client, load_creds, save_creds
 
-CREDS_KEYS = ("DANA4_HOST", "DANA4_USERNAME", "DANA4_PASSWORD")
+CREDS_KEYS = ("DANA4_HOST", "DANA4_API_KEY")
 
 
 def _clear_env():
@@ -31,11 +30,10 @@ def test_creds_roundtrip_and_permissions(tmp):
     _clear_env()
     assert load_creds() == {}, "missing file must read as empty, not raise"
 
-    path = save_creds("https://dana4.example/", "a.dana4", "pw")
+    path = save_creds("https://dana4.example/", "d4a_key")
     assert load_creds() == {
         "host": "https://dana4.example/",
-        "username": "a.dana4",
-        "password": "pw",
+        "api_key": "d4a_key",
     }
     assert path.stat().st_mode & 0o777 == 0o600, (
         "credentials must be owner-only"
@@ -48,19 +46,19 @@ def test_creds_roundtrip_and_permissions(tmp):
 def test_env_beats_file(tmp):
     os.environ[CREDS_ENV_VAR] = str(tmp / "credentials.json")
     _clear_env()
-    save_creds("https://stored.example", "stored.dana4", "stored-pw")
+    save_creds("https://stored.example", "d4a_stored")
 
     c = Dana4Client()
-    assert c.host == "https://stored.example" and c.username == "stored.dana4"
+    assert c.host == "https://stored.example" and c.api_key == "d4a_stored"
 
     os.environ["DANA4_HOST"] = "https://env.example"
-    os.environ["DANA4_USERNAME"] = "env.dana4"
     c = Dana4Client()
     assert c.host == "https://env.example", "env must win over the stored file"
-    assert c.username == "env.dana4"
-    assert c.password == "stored-pw", (
+    assert c.api_key == "d4a_stored", (
         "unset env field falls through to the file"
     )
+    os.environ["DANA4_API_KEY"] = "d4a_env"
+    assert Dana4Client().api_key == "d4a_env"
 
     c = Dana4Client(host="https://kwarg.example")
     assert c.host == "https://kwarg.example", "kwarg must win over env"
@@ -79,19 +77,16 @@ def test_no_host_raises(tmp):
     try:
         Dana4Client()
     except ValueError as e:
-        assert "register" in str(e), "the error should say how to fix it"
+        assert "enroll" in str(e), "the error should say how to fix it"
     else:
         raise AssertionError("Dana4Client() with no host anywhere must raise")
 
 
 def test_auth_header():
-    c = Dana4Client(
-        host="https://x.example", username="a.dana4", password="p:w"
-    )
-    scheme, blob = c._auth_header.split(" ", 1)
-    assert scheme == "Basic"
-    # Only the first colon separates user from password.
-    assert base64.b64decode(blob).decode() == "a.dana4:p:w"
+    c = Dana4Client(host="https://x.example", api_key="d4a_k")
+    sent = _capture(c)
+    c.tasks_take()
+    assert sent[-1].headers["Authorization"] == "Bearer d4a_k"
 
 
 def _capture(c):
@@ -117,7 +112,7 @@ def _capture(c):
 
 
 def test_bodyless_writes_send_empty_json():
-    c = Dana4Client(host="https://x.example", username="a.dana4", password="p")
+    c = Dana4Client(host="https://x.example", api_key="d4a_k")
     sent = _capture(c)
 
     c.tasks_take()
@@ -143,21 +138,60 @@ def test_bodyless_writes_send_empty_json():
     assert sent[-1].full_url.endswith("/automations/automation:1")
 
 
-def test_serverless_register_sends_null_url():
+def test_enroll_polls_until_approved():
     c = Dana4Client(host="https://x.example")
-    sent = _capture(c)
+    replies = [
+        (
+            200,
+            {
+                "device_code": "dc",
+                "user_code": "BCDF-GHJK",
+                "expires_in": 60,
+                "interval": 0,
+                "verification_uri_complete": "https://x/activate",
+            },
+        ),
+        (400, {"error": "authorization_pending"}),
+        (200, {"api_key": "d4a_new", "agent": {"username": "a.dana4"}}),
+    ]
+    sent = []
 
-    c.register("a.dana4", "pw", "a@b.c")
-    body = json.loads(sent[-1].data)
-    # url:null is what makes the agent serverless; the key must be present.
-    assert body["url"] is None and "url" in body
-    assert body["email"] == "a@b.c"
-    assert sent[-1].full_url.endswith("/agents")
-    assert "Authorization" not in sent[-1].headers, (
-        "registration is the one open endpoint"
-    )
-    # Credentials are adopted for the calls that follow.
-    assert c.username == "a.dana4" and c._auth_header
+    class _Resp:
+        def __init__(self, body):
+            self.body = body
+
+        def read(self):
+            return json.dumps(self.body).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        sent.append(req)
+        status, body = replies.pop(0)
+        if status != 200:
+            import io
+            import urllib.error
+
+            raise urllib.error.HTTPError(
+                req.full_url,
+                status,
+                "",
+                {},
+                io.BytesIO(json.dumps(body).encode()),
+            )
+        return _Resp(body)
+
+    dana4_client.urllib.request.urlopen = fake_urlopen
+    start = c.enroll_start("a.dana4")
+    assert "Authorization" not in sent[-1].headers, "enrollment is open"
+    assert sent[-1].full_url.endswith("/agents/enroll")
+    result = c.enroll_wait(start)
+    assert result["api_key"] == "d4a_new" and c.api_key == "d4a_new"
+    assert json.loads(sent[-1].data) == {"device_code": "dc"}
 
 
 def test_client_matches_claude_plugin():
@@ -240,7 +274,7 @@ def main():
             test_no_host_raises(tmp)
             test_auth_header()
             test_bodyless_writes_send_empty_json()
-            test_serverless_register_sends_null_url()
+            test_enroll_polls_until_approved()
             test_watch_reads_messages_out_of_a_chat_thread()
             test_client_matches_claude_plugin()
     finally:
