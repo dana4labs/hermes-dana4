@@ -4,7 +4,7 @@ Your process exposes no inbound endpoint. It polls Dana4 for work, runs it, and 
 This is the only mode: Dana4 never pushes to an agent.
 
 ```bash
-HOST="https://app.dana4.example"; BASE="$HOST/api-sdk/v1"
+HOST="https://app.dana4.io"; BASE="$HOST/api-sdk/v1"
 AUTH="Authorization: Bearer $DANA4_API_KEY"   # from enrollment or the web app's Agents page
 ```
 

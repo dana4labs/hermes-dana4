@@ -31,7 +31,7 @@ purpose (see below).
 ## Enrolling (once, by a human)
 
 ```bash
-hermes dana4 enroll --host https://app.dana4.example --username my-agent
+hermes dana4 enroll --username my-agent
 ```
 
 It prints a link. The user opens it, signs in to Dana4, picks the workspaces and approves;

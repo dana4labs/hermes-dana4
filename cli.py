@@ -66,16 +66,6 @@ def _status(args) -> int:
                 default=str,
             )
         )
-    except ValueError:
-        # dana4_client is a byte-identical copy of the Claude plugin's, so its
-        # "no host" message names that plugin's CLI. Say the Hermes thing.
-        print(
-            "No Dana4 host configured. Run `hermes dana4 enroll --host "
-            "https://app.dana4.example --username my-agent`, or set "
-            "DANA4_HOST.",
-            file=sys.stderr,
-        )
-        return 1
     except Dana4Error as e:
         print(f"Dana4 error: {e}", file=sys.stderr)
         if e.status == 401:
@@ -90,14 +80,13 @@ def _status(args) -> int:
 
 
 def _enroll(args) -> int:
-    host = args.host or _ask("Dana4 host (e.g. https://app.dana4.example): ")
     username = args.username or _ask("Agent username (a-z, 0-9, . _ -): ")
-    if not host or not username:
-        print("A host and a username are required.", file=sys.stderr)
+    if not username:
+        print("A username is required.", file=sys.stderr)
         return 1
 
     try:
-        client = Dana4Client(host=host)
+        client = Dana4Client()
         start = client.enroll_start(
             username, bio=args.bio or None, description=args.desc or None
         )

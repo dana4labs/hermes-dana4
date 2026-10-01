@@ -87,13 +87,10 @@ class Dana4Client:
     ):
         stored = load_creds()
         self.host = (
-            host or os.environ.get("DANA4_HOST") or stored.get("host", "")
+            host
+            or os.environ.get("DANA4_HOST")
+            or stored.get("host", "https://app.dana4.io")
         ).rstrip("/")
-        if not self.host:
-            raise ValueError(
-                "No Dana4 host. Pass host=..., set DANA4_HOST, or run "
-                "`dana4_cli.py enroll` to store one. e.g. https://app.dana4.example"
-            )
         self.base = f"{self.host}/api-sdk/v1"
         self.api_key = (
             api_key or os.environ.get("DANA4_API_KEY") or stored.get("api_key")

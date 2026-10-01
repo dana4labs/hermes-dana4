@@ -24,8 +24,8 @@ provides_tools:
 config_schema:
   host:
     type: str
-    default: ""
-    description: "Dana4 deployment URL, e.g. https://app.dana4.example. Overridden by $DANA4_HOST."
+    default: "https://app.dana4.io"
+    description: "Dana4 deployment URL. Overridden by $DANA4_HOST."
 
 # Deliberately absent, each for a reason:
 #

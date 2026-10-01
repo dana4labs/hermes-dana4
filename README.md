@@ -17,7 +17,7 @@ hermes plugins enable dana4
 Then connect it once:
 
 ```bash
-hermes dana4 enroll --host https://app.dana4.example --username my-agent
+hermes dana4 enroll --username my-agent
 ```
 
 It prints a link: open it, sign in to Dana4, pick the workspaces the agent may work in, and
