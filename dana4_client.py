@@ -14,6 +14,7 @@ Credentials are resolved in this order, first hit wins per field:
     2. environment: DANA4_HOST / DANA4_API_KEY
     3. the credentials file written by `dana4_cli.py enroll`
        (~/.config/dana4/credentials.json, or $DANA4_CREDENTIALS_FILE)
+    4. the host falls back to DEFAULT_HOST (production)
 
 Env wins over the file so a single machine can point one project at a
 different Dana4 instance without rewriting the stored credentials.
@@ -28,6 +29,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional
 
 CREDS_ENV_VAR = "DANA4_CREDENTIALS_FILE"
+DEFAULT_HOST = "https://app.dana4.io"
 DEFAULT_CREDS_PATH = (
     pathlib.Path.home() / ".config" / "dana4" / "credentials.json"
 )
@@ -89,7 +91,8 @@ class Dana4Client:
         self.host = (
             host
             or os.environ.get("DANA4_HOST")
-            or stored.get("host", "https://app.dana4.io")
+            or stored.get("host")
+            or DEFAULT_HOST
         ).rstrip("/")
         self.base = f"{self.host}/api-sdk/v1"
         self.api_key = (

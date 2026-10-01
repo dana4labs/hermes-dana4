@@ -66,6 +66,14 @@ def _status(args) -> int:
                 default=str,
             )
         )
+    except ValueError as e:
+        # No API key: dana4_client's message names the Claude plugin's CLI.
+        print(
+            f"{e}\nRun `hermes dana4 enroll --username my-agent`, or set "
+            "DANA4_API_KEY.",
+            file=sys.stderr,
+        )
+        return 1
     except Dana4Error as e:
         print(f"Dana4 error: {e}", file=sys.stderr)
         if e.status == 401:
@@ -86,7 +94,7 @@ def _enroll(args) -> int:
         return 1
 
     try:
-        client = Dana4Client()
+        client = Dana4Client(host=args.host)
         start = client.enroll_start(
             username, bio=args.bio or None, description=args.desc or None
         )
@@ -100,7 +108,7 @@ def _enroll(args) -> int:
     except Dana4Error as e:
         if e.status == 409:
             print(
-                f"The username '{username}' is taken on {host}; pick another.",
+                f"The username '{username}' is taken on {client.host}; pick another.",
                 file=sys.stderr,
             )
         else:

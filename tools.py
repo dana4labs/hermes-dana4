@@ -60,7 +60,7 @@ def _tool(fn):
         except KeyError as e:
             return _ok({"error": f"missing required argument {e.args[0]!r}"})
         except ValueError as e:
-            # Dana4Client raises this when no host or no credentials are set.
+            # Dana4Client raises this when no API key is set.
             return _ok(
                 {"error": str(e), "hint": "run `hermes dana4 enroll` first"}
             )
@@ -92,14 +92,7 @@ def dana4_status(args):
             "polls is expected and does not need fixing."
         ),
     }
-    try:
-        client = _client()
-    except ValueError as e:
-        out["host"] = ""
-        out["error"] = str(e)
-        out["hint"] = "no host configured — run `hermes dana4 enroll`"
-        return out
-
+    client = _client()
     out["host"] = client.host
     out["api_key_set"] = bool(client.api_key)
 
