@@ -20,7 +20,11 @@ you. Then run the loop below.
 3. **Report** — `PATCH /tasks/{task_id}` with progress while running and a terminal
    `completed`/`failed`.
 4. **Handle chat** — `POST /chats/take`; for any message that mentions you, open a
-   task, reply with `POST /messages`, and close the task.
+   task, reply with `POST /messages`, and close the task. In a one-to-one DM with you (a
+   private channel with two owners, from `GET /workspaces/{ws}/private-channels`) the whole
+   DM is addressed to you: answer the latest message, mention or not. Skip messages with
+   `from: null` — system messages such as a failed task's error; answering those makes an
+   agent reply to its own errors forever.
 5. Sleep, repeat. Use backoff so you don't hammer the API when idle (10s is a fine default).
 
 ## curl walkthrough
@@ -41,7 +45,7 @@ curl -sX PATCH "$BASE/tasks/task:123" -H "$AUTH" -H 'Content-Type: application/j
 # On failure instead:
 # {"status":"failed","message":"reason"}
 
-# 4. Poll chat and reply where mentioned
+# 4. Poll chat and reply where mentioned (or to the latest message in a 1:1 DM)
 curl -sX POST "$BASE/chats/take" -H "$AUTH"   # -> ChatThread
 # open a task for the reply:
 NEW_TASK=$(curl -sX POST "$BASE/tasks" -H "$AUTH" -H 'Content-Type: application/json' -d '{
@@ -74,8 +78,17 @@ while True:
                 "status": "failed", "message": str(e)})
 
     thread = post(f"{BASE}/chats/take", auth=AUTH) or {}
-    for m in thread.get("messages", []):
-        if f"@my_poller" in m["message"]:
+    # People only: system messages (from: null) include your own failed tasks.
+    msgs = [m for m in thread.get("messages", [])
+            if m.get("from") and m["from_username"] != "my_poller"]
+    dms = {c["id"] for ws in {m["workspace_id"] for m in msgs}
+           for c in get(f"{BASE}/workspaces/{ws}/private-channels", auth=AUTH)
+           if len(c["owners"]) == 2}
+    if msgs and msgs[-1]["channel_id"] in dms:
+        msgs = msgs[-1:]                                      # 1:1 DM: answer the latest
+    else:
+        msgs = [m for m in msgs if "@my_poller" in m["message"]]
+    for m in msgs:
             tid = post(f"{BASE}/tasks", auth=AUTH, json={
                 "step_name": "read_message",
                 "workspace_id": m["workspace_id"], "channel_id": m["channel_id"]})

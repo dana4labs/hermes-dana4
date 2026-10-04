@@ -121,6 +121,17 @@ def dana4_status(args):
     return out
 
 
+def _one_to_one_dm_ids(client, workspace_id: str) -> set:
+    """The agent's one-to-one DMs in a workspace (private, two owners: the
+    server's rule). Such a DM is addressed to the agent as a whole, @-mention
+    or not. Raises Dana4Error."""
+    return {
+        c.get("id")
+        for c in client.private_channels(workspace_id) or []
+        if isinstance(c, dict) and len(c.get("owners") or []) == 2
+    }
+
+
 def _new_ids(seen: List[str], candidates: List[str]) -> List[str]:
     known = set(seen)
     return [c for c in candidates if c and c not in known]
@@ -150,6 +161,19 @@ def dana4_watch(args):
             }
 
     collected: List[Dict[str, Any]] = []
+    errors: Dict[str, str] = {}
+    dm_ids: Dict[str, set] = {}
+
+    def is_direct(ws: Optional[str], channel_id: Optional[str]) -> bool:
+        if not ws or not channel_id:
+            return False
+        if ws not in dm_ids:
+            try:
+                dm_ids[ws] = _one_to_one_dm_ids(client, ws)
+            except Dana4Error as e:
+                errors[f"dms:{ws}"] = str(e)
+                dm_ids[ws] = set()
+        return channel_id in dm_ids[ws]
 
     def absorb(messages, channel_override=None):
         # Both message endpoints answer with a ChatThread — {channel_id, intent,
@@ -160,26 +184,28 @@ def dana4_watch(args):
         for m in messages or []:
             if not isinstance(m, dict):
                 continue
-            # from: null marks system / automated traffic — not worth waking
-            # anyone up for.
-            if m.get("from") is None and m.get("from_username") is None:
+            # from: null marks system / automated traffic (a failed task's
+            # error, say) — not worth waking anyone up for. Such messages still
+            # carry a placeholder from_username, so only `from` tells.
+            if m.get("from") is None:
                 continue
             mid = m.get("id")
             if not mid or mid in {c["id"] for c in collected}:
                 continue
             body = m.get("message", "")
+            ws = m.get("workspace_id", workspace_id)
+            channel_id = channel_override or m.get("channel_id")
             collected.append(
                 {
                     "id": mid,
-                    "workspace_id": m.get("workspace_id", workspace_id),
-                    "channel_id": channel_override or m.get("channel_id"),
+                    "workspace_id": ws,
+                    "channel_id": channel_id,
                     "from": m.get("from_username") or m.get("from"),
                     "message": body,
                     "mentions_me": bool(mention and f"@{mention}" in body),
+                    "direct": is_direct(ws, channel_id),
                 }
             )
-
-    errors: Dict[str, str] = {}
 
     # 1. The agent inbox: only chats the server routed to this agent.
     try:
@@ -258,9 +284,24 @@ def dana4_task_report(args):
 
 @_tool
 def dana4_messages(args):
-    """Read the agent inbox, and a named channel's history if given."""
+    """Read the agent inbox, and a named channel's history if given.
+
+    `inbox_direct` says whether the inbox thread is a one-to-one DM with the
+    agent: if so, its messages are addressed to the agent, mention or not."""
     client = _client()
-    out: Dict[str, Any] = {"inbox": client.messages_read_next_chat()}
+    inbox = client.messages_read_next_chat() or {}
+    out: Dict[str, Any] = {"inbox": inbox, "inbox_direct": False}
+    ws = next(
+        (m.get("workspace_id") for m in inbox.get("messages") or []), None
+    )
+    if ws:
+        # The inbox is already marked read: a failed lookup must not lose it.
+        try:
+            out["inbox_direct"] = inbox.get("channel_id") in _one_to_one_dm_ids(
+                client, ws
+            )
+        except Dana4Error as e:
+            out["inbox_direct_error"] = str(e)
     channel_id = args.get("channel_id")
     if channel_id:
         out["channel"] = client.messages_fetch(channel_id)
@@ -376,7 +417,7 @@ SCHEMAS = {
                 },
                 "mention": {
                     "type": "string",
-                    "description": "Agent username; messages containing @username are flagged mentions_me.",
+                    "description": "Agent username; messages containing @username are flagged mentions_me. (Messages in a one-to-one DM with the agent come back flagged direct either way.)",
                 },
             },
             "required": [],
@@ -441,7 +482,9 @@ SCHEMAS = {
             "channel's history when channel_id is given. The "
             "inbox is not the channel log — if a user says they tagged the "
             "agent and got no answer, read the channel directly. Messages with "
-            "a null sender are system traffic; ignore them."
+            "a null sender are system traffic; ignore them. inbox_direct: true "
+            "means the inbox is a one-to-one DM with the agent, so its messages "
+            "are addressed to the agent even without an @-mention."
         ),
         "parameters": {
             "type": "object",

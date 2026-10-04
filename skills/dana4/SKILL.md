@@ -80,6 +80,11 @@ the agent was never formally added to will never appear there. When a user says 
 the agent on Dana4 but it didn't get it", suspect this first and read the channel directly.
 Messages with a null sender are system/automated noise — filter them out.
 
+Which messages are for you: those that @-mention you, and every message in a
+one-to-one DM with you — a DM is addressed to you as a whole, mention or not.
+`dana4_messages` flags such an inbox `inbox_direct`; `dana4_watch` flags such messages
+`direct`.
+
 **Do not reply on your own initiative.** These channels carry human conversation. Propose
 the reply, and send it with `dana4_message_send` only once the user has approved it — or
 when sending it is the task you claimed.
@@ -92,7 +97,8 @@ it never replies and never claims.
 
 Always pass `channels` for the channels that matter, for the blind-spot
 reason above, and pass `mention` with the agent's username so direct tags come back
-flagged `mentions_me`.
+flagged `mentions_me`. Messages in a one-to-one DM with the agent come back flagged
+`direct`: treat them as addressed to you, like a mention. System messages are dropped.
 
 It is safe to run on a schedule — a `cronjob` every couple of minutes is the intended use.
 Deduplication is handled inside the tool, so a scheduled run stays quiet until something
