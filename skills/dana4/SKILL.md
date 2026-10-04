@@ -82,8 +82,8 @@ Messages with a null sender are system/automated noise — filter them out.
 
 Which messages are for you: those that @-mention you, and every message in a
 one-to-one DM with you — a DM is addressed to you as a whole, mention or not.
-`dana4_messages` flags such an inbox `inbox_direct`; `dana4_watch` flags such messages
-`direct`.
+Every thread `dana4_messages` returns says so as `direct: true`; `dana4_watch` flags
+such messages `direct`.
 
 **Do not reply on your own initiative.** These channels carry human conversation. Propose
 the reply, and send it with `dana4_message_send` only once the user has approved it — or

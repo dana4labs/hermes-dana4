@@ -256,9 +256,6 @@ def test_watch_reads_messages_out_of_a_chat_thread():
         def messages_fetch(self, channel_id):
             return thread
 
-        def private_channels(self, workspace_id):
-            return []
-
         def tasks_unassigned(self):
             return []
 
@@ -287,6 +284,7 @@ def test_watch_flags_dms_and_drops_system_messages():
 
     thread = {
         "channel_id": "dm/1",
+        "direct": True,
         "messages": [
             msg("msg/1", "dm/1", "hi! how can you help me?"),
             msg("msg/2", "dm/1", "Claude API key missing.", sender=None),
@@ -298,13 +296,10 @@ def test_watch_flags_dms_and_drops_system_messages():
             return thread
 
         def messages_fetch(self, channel_id):
-            return {"messages": [msg("msg/3", channel_id, "group chatter")]}
-
-        def private_channels(self, workspace_id):
-            return [
-                {"id": "dm/1", "owners": ["user/1", "agent"]},
-                {"id": "group/1", "owners": ["user/1", "user/2", "agent"]},
-            ]
+            return {
+                "direct": False,
+                "messages": [msg("msg/3", channel_id, "group chatter")],
+            }
 
         def tasks_unassigned(self):
             return []
@@ -325,39 +320,6 @@ def test_watch_flags_dms_and_drops_system_messages():
     assert got == {"msg/1": (True, False), "msg/3": (False, False)}, out
 
 
-def test_messages_flags_a_dm_inbox():
-    """dana4_messages hands back the raw inbox; inbox_direct tells the model a
-    DM is addressed to it even without an @-mention."""
-    tools = _load_tools()
-
-    class _Fake:
-        def __init__(self, channel_id):
-            self.channel_id = channel_id
-
-        def messages_read_next_chat(self):
-            return {
-                "channel_id": self.channel_id,
-                "messages": [
-                    {"id": "m/1", "workspace_id": "ws/1", "message": "hi"}
-                ],
-            }
-
-        def private_channels(self, workspace_id):
-            return [
-                {"id": "dm/1", "owners": ["user/1", "agent"]},
-                {"id": "group/1", "owners": ["user/1", "user/2", "agent"]},
-            ]
-
-    for channel_id, direct in [
-        ("dm/1", True),
-        ("group/1", False),
-        ("public/1", False),
-    ]:
-        tools._client = lambda: _Fake(channel_id)
-        out = json.loads(tools.dana4_messages({}))
-        assert out["inbox_direct"] is direct, (channel_id, out)
-
-
 def main():
     real_urlopen = dana4_client.urllib.request.urlopen
     saved = {k: os.environ.get(k) for k in CREDS_KEYS + (CREDS_ENV_VAR,)}
@@ -372,7 +334,6 @@ def main():
             test_enroll_polls_until_approved()
             test_watch_reads_messages_out_of_a_chat_thread()
             test_watch_flags_dms_and_drops_system_messages()
-            test_messages_flags_a_dm_inbox()
             test_client_matches_claude_plugin()
     finally:
         dana4_client.urllib.request.urlopen = real_urlopen
