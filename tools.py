@@ -186,8 +186,12 @@ def dana4_watch(args):
                 continue
             # from: null marks system / automated traffic (a failed task's
             # error, say) — not worth waking anyone up for. Such messages still
-            # carry a placeholder from_username, so only `from` tells.
-            if m.get("from") is None:
+            # carry a placeholder from_username, so only `from` tells. The one
+            # system message that matters is the workspace invite.
+            if (
+                m.get("from") is None
+                and m.get("category") != "invited_to_workspace"
+            ):
                 continue
             mid = m.get("id")
             if not mid or mid in {c["id"] for c in collected}:
