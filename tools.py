@@ -10,6 +10,7 @@ Registration is deliberately NOT a tool — see cli.py.
 """
 
 import json
+import re
 from typing import Any, Dict, List, Optional
 
 from .dana4_client import Dana4Client, Dana4Error, creds_path, load_creds
@@ -121,6 +122,16 @@ def dana4_status(args):
     return out
 
 
+_NOT_IN_USERNAME = re.compile(r"^[^\w@.\-]+|[^\w@.\-]+$")
+
+
+def _tagged_usernames(body: str) -> set:
+    """Usernames @-mentioned in `body`, lowercased: the server's rule, so
+    `@bot` never matches `@bot.helper`."""
+    words = (_NOT_IN_USERNAME.sub("", w) for w in body.split())
+    return {w[1:].lower() for w in words if len(w) > 1 and w.startswith("@")}
+
+
 def _new_ids(seen: List[str], candidates: List[str]) -> List[str]:
     known = set(seen)
     return [c for c in candidates if c and c not in known]
@@ -186,7 +197,8 @@ def dana4_watch(args):
                     "channel_id": channel_id,
                     "from": m.get("from_username") or m.get("from"),
                     "message": body,
-                    "mentions_me": bool(mention and f"@{mention}" in body),
+                    "mentions_me": bool(mention)
+                    and mention.lstrip("@").lower() in _tagged_usernames(body),
                     "direct": direct,
                 }
             )

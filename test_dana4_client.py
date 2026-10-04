@@ -298,7 +298,11 @@ def test_watch_flags_dms_and_drops_system_messages():
         def messages_fetch(self, channel_id):
             return {
                 "direct": False,
-                "messages": [msg("msg/3", channel_id, "group chatter")],
+                "messages": [
+                    msg("msg/3", channel_id, "group chatter"),
+                    msg("msg/4", channel_id, "@agent.helper, not you"),
+                    msg("msg/5", channel_id, "over to you (@Agent)"),
+                ],
             }
 
         def tasks_unassigned(self):
@@ -317,7 +321,12 @@ def test_watch_flags_dms_and_drops_system_messages():
     got = {
         m["id"]: (m["direct"], m["mentions_me"]) for m in out["new_messages"]
     }
-    assert got == {"msg/1": (True, False), "msg/3": (False, False)}, out
+    assert got == {
+        "msg/1": (True, False),
+        "msg/3": (False, False),
+        "msg/4": (False, False),
+        "msg/5": (False, True),
+    }, out
 
 
 def main():

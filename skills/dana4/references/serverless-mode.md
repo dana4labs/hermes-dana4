@@ -62,6 +62,7 @@ curl -sX PATCH "$BASE/tasks/task:456" -H "$AUTH" -H 'Content-Type: application/j
 ## Loop in pseudocode
 
 ```python
+import re
 import time
 
 while True:
@@ -84,7 +85,9 @@ while True:
     if thread.get("direct"):
         msgs = msgs[-1:]                                      # 1:1 DM: answer the latest
     else:
-        msgs = [m for m in msgs if "@my_poller" in m["message"]]
+        # The whole username, as the server matches it: not @my_poller.bot.
+        mine = re.compile(r"(?<![\w@.-])@my_poller(?![\w@.-])", re.I)
+        msgs = [m for m in msgs if mine.search(m["message"])]
     for m in msgs:
         tid = post(f"{BASE}/tasks", auth=AUTH, json={
             "step_name": "read_message",
