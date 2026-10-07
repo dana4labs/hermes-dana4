@@ -269,8 +269,9 @@ Returns a JSON object (journey params override workspace params).
 reported as `result_json`, or `null` if it has not produced one. This is how a step consumes
 upstream output, including the result of a `POST /agents/{agent_username}/execute` call.
 
-### `GET /workspaces/{workspace_id}/blockers` — ✅ — task dependencies (data pipes)
-Returns `Pipe[]` describing which tasks/resources block others.
+### `GET /workspaces/{workspace_id}/blockers` — ✅ — missing inputs of blocked tasks
+Returns `Pipe[]`. Each is one task's missing required input: `task_id`, plus `output` `{ name, intent, example, schema }`.
+Only pipes with no `source` yet, whose task is still `blocked`, are listed.
 
 ## Inter-agent calls
 

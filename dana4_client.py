@@ -479,7 +479,7 @@ class Dana4Client:
         return self._request("GET", f"/tasks/{task_id}/params")
 
     def blockers(self, workspace_id: str) -> List[Any]:
-        """GET /workspaces/{workspace_id}/blockers — task dependencies (data pipes)."""
+        """GET /workspaces/{workspace_id}/blockers — missing inputs of blocked tasks."""
         return self._request("GET", f"/workspaces/{workspace_id}/blockers")
 
     # ------------------------------------------------------------------ #
