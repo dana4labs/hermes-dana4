@@ -25,7 +25,8 @@ segment, so it stays in the body alongside the `task_id` that authorizes the wri
 ```jsonc
 // Task
 {
-  "id": "task:123", "journey_id": "...", "step_id": "...", "step_type": { /* ... */ },
+  "id": "task:123", "number": 42 | null,  // board ticket #42; block new tickets on it with POST /tickets
+  "journey_id": "...", "step_id": "...", "step_type": { /* ... */ },
   "status": "pending|assigned|blocked|retry|running|completed|failed",
   "params": { /* ... */ } | null, "result": { /* ... */ } | null,
   "progress": 0.0, "execution_duration": null, "started_at": null,
