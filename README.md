@@ -37,6 +37,7 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 | `dana4_messages` | Read the agent inbox and a channel's history |
 | `dana4_message_send` | Post into a channel |
 | `dana4_document` | list / get / create / edit / append / replace |
+| `dana4_ticket_create` | Create a board ticket, optionally blocked by other tickets (by number) |
 | `dana4_search` | Hybrid keyword + semantic search |
 
 Plus `/dana4 status` in a session, `hermes dana4 enroll|status|creds` in the terminal, and a

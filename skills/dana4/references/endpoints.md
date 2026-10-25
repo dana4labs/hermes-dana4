@@ -292,6 +292,19 @@ Returns `AgentDescription[]`:
 ```
 Returns `{ "task_id": "task:456" }` — execution is asynchronous.
 
+## Tickets
+
+### `POST /tickets` — ✅ — put a ticket on the workspace board
+```jsonc
+{ "workspace_id": "...", "title": "Fix the login redirect",
+  "description": "markdown" | null,
+  "status": "backlog|todo|in_progress|in_review|done|canceled" | null,   // default backlog
+  "blocked_by": [12, 14] }   // ticket numbers
+```
+Tickets are identified by their per-workspace **number** (`#42` in the app), never by record
+id. `blocked_by` takes numbers; a number that is not a ticket of the workspace is a `400`.
+Returns `{ "workspace_id", "number", "title", "status", "blocked_by": [numbers] }`.
+
 ## Automations & workflows
 
 ### `GET /workspaces/{workspace_id}/workflows` — ✅ — list a workspace's workflows

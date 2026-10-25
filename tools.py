@@ -306,6 +306,18 @@ def dana4_message_send(args):
 
 
 @_tool
+def dana4_ticket_create(args):
+    """Put a ticket on the workspace's board, optionally blocked by other tickets."""
+    return _client().ticket_create(
+        args["workspace_id"],
+        args["title"],
+        description=args.get("description"),
+        status=args.get("status"),
+        blocked_by=args.get("blocked_by"),
+    )
+
+
+@_tool
 def dana4_document(args):
     """One entry point for the whole document family, switched on `op`."""
     client = _client()
@@ -576,6 +588,46 @@ SCHEMAS = {
             "required": ["op"],
         },
     },
+    "dana4_ticket_create": {
+        "name": "dana4_ticket_create",
+        "description": (
+            "Create a ticket on the workspace's board. Tickets are identified by "
+            "their per-workspace number (#42); blocked_by takes those numbers. "
+            "Returns the new ticket with its number."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "workspace_id": _WS,
+                "title": {
+                    "type": "string",
+                    "description": "The ticket's title.",
+                },
+                "description": {
+                    "type": "string",
+                    "description": "What needs doing, in markdown.",
+                },
+                "status": {
+                    "type": "string",
+                    "enum": [
+                        "backlog",
+                        "todo",
+                        "in_progress",
+                        "in_review",
+                        "done",
+                        "canceled",
+                    ],
+                    "description": "The board column. Defaults to backlog.",
+                },
+                "blocked_by": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "description": "Numbers of the tickets that must finish first.",
+                },
+            },
+            "required": ["workspace_id", "title"],
+        },
+    },
     "dana4_search": {
         "name": "dana4_search",
         "description": "Hybrid keyword and semantic search across a workspace's documents.",
@@ -599,6 +651,7 @@ HANDLERS = {
     "dana4_messages": dana4_messages,
     "dana4_message_send": dana4_message_send,
     "dana4_document": dana4_document,
+    "dana4_ticket_create": dana4_ticket_create,
     "dana4_search": dana4_search,
 }
 
@@ -652,5 +705,6 @@ EMOJI = {
     "dana4_messages": "💬",
     "dana4_message_send": "📤",
     "dana4_document": "📄",
+    "dana4_ticket_create": "🎫",
     "dana4_search": "🔍",
 }

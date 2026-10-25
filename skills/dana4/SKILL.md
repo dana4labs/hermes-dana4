@@ -58,6 +58,13 @@ to close a task.
 Run one bounded pass at a time. Claim a task, work it, close it, stop — do not loop
 unprompted. For continuous operation, put `dana4_watch` on a schedule (below).
 
+## Tickets
+
+`dana4_ticket_create` puts a ticket on the workspace's board. Tickets are identified by a
+per-workspace number (`#42`), and `blocked_by` takes those numbers. The reply carries the new
+ticket's `number` — keep it to block later tickets on this one. A number that is not a ticket
+of the workspace is a `400`.
+
 ## Documents
 
 Every document write is tied to a task. `dana4_document` with `op: create`, `edit`,

@@ -513,6 +513,34 @@ class Dana4Client:
         )
 
     # ------------------------------------------------------------------ #
+    # Tickets
+    # ------------------------------------------------------------------ #
+    def ticket_create(
+        self,
+        workspace_id: str,
+        title: str,
+        description: Optional[str] = None,
+        status: Optional[str] = None,
+        blocked_by: Optional[List[int]] = None,
+    ) -> Any:
+        """POST /tickets — put a ticket on the board.
+
+        Tickets are referred to by their per-workspace number: blocked_by=[12]
+        means ticket #12 must finish first.
+        """
+        return self._request(
+            "POST",
+            "/tickets",
+            body={
+                "workspace_id": workspace_id,
+                "title": title,
+                "description": description,
+                "status": status,
+                "blocked_by": blocked_by or [],
+            },
+        )
+
+    # ------------------------------------------------------------------ #
     # Automations & workflows
     # ------------------------------------------------------------------ #
     def workflows_list(self, workspace_id: str) -> List[Any]:
