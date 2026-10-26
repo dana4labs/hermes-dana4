@@ -175,13 +175,13 @@ def dana4_watch(args):
         for m in messages or []:
             if not isinstance(m, dict):
                 continue
-            # from: null marks system / automated traffic (a failed task's
-            # error, say) — not worth waking anyone up for. Such messages still
-            # carry a placeholder from_username, so only `from` tells. The one
-            # system message that matters is the workspace invite.
-            if (
-                m.get("from") is None
-                and m.get("category") != "invited_to_workspace"
+            # from: null marks system / automated traffic, and any category
+            # but default is an orchestrator event (notice, error, status line)
+            # — not worth waking anyone up for. The one that matters is the
+            # workspace invite.
+            category = m.get("category", "default")
+            if category != "invited_to_workspace" and (
+                m.get("from") is None or category != "default"
             ):
                 continue
             mid = m.get("id")
@@ -513,9 +513,9 @@ SCHEMAS = {
                     "type": "string",
                     "enum": [
                         "default",
-                        "dependencies_status",
+                        "notice",
                         "error",
-                        "transient",
+                        "skip_from_history",
                     ],
                 },
             },

@@ -36,7 +36,7 @@ segment, so it stays in the body alongside the `task_id` that authorizes the wri
 // Message  (note the JSON key is "from", not "from_"; null for system messages)
 {
   "id": "...", "message": "hello", "workspace_id": "...",
-  "category": "default|dependencies_status|error|transient",
+  "category": "default|notice|error|skip_from_history|invited_to_workspace"  // only default is conversation,
   "channel_id": "...", "from": "user:42" | null, "from_username": "alice",
   "time": { "created_at": "...", "updated_at": "...", "deleted_at": null }
 }
