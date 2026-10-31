@@ -418,8 +418,8 @@ class Dana4Client:
         channel_id: str,
         since: Optional[str] = None,
         until: Optional[str] = None,
-    ) -> List[Any]:
-        """GET /channels/{channel_id}/messages — fetch a channel's messages."""
+    ) -> Dict[str, Any]:
+        """GET /channels/{channel_id}/messages — thread context and messages."""
         query: Dict[str, str] = {}
         if since is not None:
             query["since"] = since
@@ -441,8 +441,14 @@ class Dana4Client:
     def messages_read_next_chat(self) -> Dict[str, Any]:
         """POST /chats/take — poll unread chat (serverless).
 
-        Answers with a ChatThread: {channel_id, intent, plan, messages}."""
+        Answers with a ChatThread: {channel_id, intent, plan, memory, messages}."""
         return self._request("POST", "/chats/take")
+
+    def channel_memory_set(self, channel_id: str, memory: str) -> Any:
+        """Replace the channel's whole shared memory; merge prior notes first."""
+        return self._request(
+            "PUT", f"/channels/{channel_id}/memory", body={"memory": memory}
+        )
 
     # ------------------------------------------------------------------ #
     # Channel plan (checklist)
