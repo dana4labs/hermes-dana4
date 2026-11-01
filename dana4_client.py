@@ -208,19 +208,19 @@ class Dana4Client:
     def update_agent(
         self,
         schema: Dict[str, Any],
-        bio: str = "",
-        description: str = "",
+        bio: Optional[str] = None,
+        description: Optional[str] = None,
     ) -> Any:
         """PATCH /agents/me — advertise capabilities (input schema + flags per key).
 
-        The Dana4 API requires `bio` and `description` to be present (both
-        strings), so they default to "" rather than being omitted.
+        `bio` / `description` left as None are omitted, so the server keeps
+        the current values.
         """
-        body: Dict[str, Any] = {
-            "schema": schema,
-            "bio": bio,
-            "description": description,
-        }
+        body: Dict[str, Any] = {"schema": schema}
+        if bio is not None:
+            body["bio"] = bio
+        if description is not None:
+            body["description"] = description
         return self._request("PATCH", "/agents/me", body=body)
 
     # ------------------------------------------------------------------ #
