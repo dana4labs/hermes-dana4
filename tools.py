@@ -309,7 +309,7 @@ def dana4_message_send(args):
 def dana4_memory_set(args):
     """Replace a channel's durable memory with the full markdown given."""
     return {
-        "memory": _client().channel_memory_set(
+        "channel": _client().channel_memory_set(
             args["channel_id"], args["memory"]
         )
     }
