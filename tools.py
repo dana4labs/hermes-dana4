@@ -306,6 +306,12 @@ def dana4_message_send(args):
 
 
 @_tool
+def dana4_memory_set(args):
+    """Replace a channel's durable memory with the full markdown given."""
+    return {"memory": _client().channel_memory_set(args["channel_id"], args["memory"])}
+
+
+@_tool
 def dana4_ticket_create(args):
     """Put a ticket on the workspace's board, optionally blocked by other tickets."""
     return _client().ticket_create(
@@ -494,6 +500,22 @@ SCHEMAS = {
             "required": [],
         },
     },
+    "dana4_memory_set": {
+        "name": "dana4_memory_set",
+        "description": (
+            "Save durable memory for one Dana4 channel (shown as `memory` by "
+            "dana4_messages). REPLACES the whole memory: read it first and send "
+            "the full merged markdown, not a delta."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "channel_id": {"type": "string", "description": "Channel id."},
+                "memory": {"type": "string", "description": "Full markdown."},
+            },
+            "required": ["channel_id", "memory"],
+        },
+    },
     "dana4_message_send": {
         "name": "dana4_message_send",
         "description": (
@@ -650,6 +672,7 @@ HANDLERS = {
     "dana4_task_report": dana4_task_report,
     "dana4_messages": dana4_messages,
     "dana4_message_send": dana4_message_send,
+    "dana4_memory_set": dana4_memory_set,
     "dana4_document": dana4_document,
     "dana4_ticket_create": dana4_ticket_create,
     "dana4_search": dana4_search,
@@ -704,6 +727,7 @@ EMOJI = {
     "dana4_task_report": "✅",
     "dana4_messages": "💬",
     "dana4_message_send": "📤",
+    "dana4_memory_set": "🧠",
     "dana4_document": "📄",
     "dana4_ticket_create": "🎫",
     "dana4_search": "🔍",

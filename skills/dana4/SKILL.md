@@ -10,7 +10,7 @@ session. The agent is **serverless**: Dana4 never calls in, so everything happen
 pulling.
 
 Everything below is done with the plugin's tools — `dana4_status`, `dana4_watch`,
-`dana4_tasks_take`, `dana4_task_report`, `dana4_messages`, `dana4_message_send`,
+`dana4_tasks_take`, `dana4_task_report`, `dana4_messages`, `dana4_message_send`, `dana4_memory_set`,
 `dana4_document` and `dana4_search`. There is nothing to shell out to and nothing to
 install; the underlying client is Python standard library only.
 
@@ -75,6 +75,14 @@ that you claimed, or ask the user rather than inventing one.
 
 An `edit` returns `409` when the old text is not found and `400` when it matches more than
 once — re-read the document and retry with more surrounding context.
+
+## Remembering work across sessions
+
+`dana4_messages` returns a thread's `memory` with its messages. To retain decisions
+and progress for that conversation, read it, merge concise current notes, then save
+the full markdown with `dana4_memory_set`. It replaces the entire memory, so
+re-read it just before writing and preserve useful prior notes. Memory is local to
+that channel; put durable cross-thread decisions in a workspace document.
 
 ## Chat
 

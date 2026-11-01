@@ -36,6 +36,7 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 | `dana4_task_report` | Report progress on, or close out, a task |
 | `dana4_messages` | Read the agent inbox and a channel's history |
 | `dana4_message_send` | Post into a channel |
+| `dana4_memory_set` | Replace a channel's durable memory |
 | `dana4_document` | list / get / create / edit / append / replace |
 | `dana4_ticket_create` | Create a board ticket, optionally blocked by other tickets (by number) |
 | `dana4_search` | Hybrid keyword + semantic search |
