@@ -26,7 +26,7 @@ segment, so it stays in the body alongside the `task_id` (or, in a chat, the `wo
 // Task
 {
   "id": "task:123", "number": 42 | null,  // board ticket #42; block new tickets on it with POST /tickets
-  "journey_id": "...", "step_id": "...", "step_type": { /* ... */ },
+  "project_id": "...", "run_id": "..." /* null outside a workflow run */, "step_id": "...", "step_type": { /* ... */ },
   "status": "pending|assigned|blocked|retry|running|completed|failed",
   "params": { /* ... */ } | null, "result": { /* ... */ } | null,
   "progress": 0.0, "execution_duration": null, "started_at": null,
@@ -250,17 +250,17 @@ it more specific). Checking an already-checked item is an idempotent no-op.
 Returns the updated `Channel`. The item is appended below the last existing
 checklist item, matching its indent/bullet style.
 
-## Workspace, journey & dependencies
+## Workspace, run & dependencies
 
 ### `GET /workspaces/{workspace_id}/params` — ✅ — workspace-level config
 Returns a JSON object of operator-provided params (API keys, flags, prompts, …). Read these
 instead of hard-coding config.
 
-### `GET /tasks/{task_id}/params` — ✅ — params merged for a task's journey
-Returns a JSON object (journey params override workspace params).
+### `GET /tasks/{task_id}/params` — ✅ — params merged for a task's run
+Returns a JSON object (run params override workspace params).
 
 ### `GET /tasks/{task_id}/steps/{step_id}/result` — ✅ — read another step's result
-`step_id` names an earlier step of the same journey as `task_id`. Returns whatever that step
+`step_id` names an earlier step of the same run as `task_id`. Returns whatever that step
 reported as `result_json`, or `null` if it has not produced one. This is how a step consumes
 upstream output, including the result of a `POST /agents/{agent_username}/execute` call.
 

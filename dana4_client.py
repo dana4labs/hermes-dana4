@@ -477,14 +477,14 @@ class Dana4Client:
         )
 
     # ------------------------------------------------------------------ #
-    # Workspace, journey & dependencies
+    # Workspace, run & dependencies
     # ------------------------------------------------------------------ #
     def workspace_params(self, workspace_id: str) -> Any:
         """GET /workspaces/{workspace_id}/params — workspace-level config."""
         return self._request("GET", f"/workspaces/{workspace_id}/params")
 
-    def journey_params(self, task_id: str) -> Any:
-        """GET /tasks/{task_id}/params — params merged for a task's journey."""
+    def task_params(self, task_id: str) -> Any:
+        """GET /tasks/{task_id}/params — params merged for a task's run."""
         return self._request("GET", f"/tasks/{task_id}/params")
 
     def blockers(self, workspace_id: str) -> List[Any]:
