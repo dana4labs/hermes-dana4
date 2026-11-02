@@ -250,23 +250,6 @@ class Dana4Client:
             body={"capability": capability},
         )
 
-    def task_start(
-        self,
-        step_name: str,
-        workspace_id: str,
-        channel_id: str,
-        params: Any = None,
-    ) -> str:
-        """POST /tasks — start a new task in a journey; returns new task_id."""
-        body = {
-            "step_name": step_name,
-            "workspace_id": workspace_id,
-            "channel_id": channel_id,
-        }
-        if params is not None:
-            body["params"] = params
-        return self._request("POST", "/tasks", body=body)
-
     def task_report(
         self,
         task_id: str,
@@ -341,9 +324,11 @@ class Dana4Client:
         title: str,
         content: str,
         task_id: Optional[str] = None,
+        channel_id: Optional[str] = None,
         document_type: str = "default",
     ) -> Any:
-        """POST /documents — create a document."""
+        """POST /documents — create a document. ``task_id`` or ``channel_id`` (a
+        chat turn has no task) records where it came from."""
         body = {
             "workspace_id": workspace_id,
             "path": path,
@@ -353,24 +338,38 @@ class Dana4Client:
         }
         if task_id is not None:
             body["task_id"] = task_id
+        if channel_id is not None:
+            body["channel_id"] = channel_id
         return self._request("POST", "/documents", body=body)
 
     def document_replace(
-        self, path: str, content: str, task_id: Optional[str] = None
+        self,
+        path: str,
+        content: str,
+        task_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> Any:
         """POST /documents/replace — replace document content."""
         body = {"path": path, "content": content}
         if task_id is not None:
             body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
         return self._request("POST", "/documents/replace", body=body)
 
     def document_append(
-        self, path: str, content: str, task_id: Optional[str] = None
+        self,
+        path: str,
+        content: str,
+        task_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
     ) -> Any:
         """POST /documents/append — append to a document."""
         body = {"path": path, "content": content}
         if task_id is not None:
             body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
         return self._request("POST", "/documents/append", body=body)
 
     def document_edit(
@@ -380,8 +379,10 @@ class Dana4Client:
         new_string: str,
         task_id: Optional[str] = None,
         replace_all: bool = False,
+        workspace_id: Optional[str] = None,
     ) -> Any:
-        """POST /documents/edit — string-replace edit."""
+        """POST /documents/edit — string-replace edit. Give ``task_id`` or, in a
+        chat (no task), ``workspace_id``."""
         body = {
             "path": path,
             "old_string": old_string,
@@ -390,6 +391,8 @@ class Dana4Client:
         }
         if task_id is not None:
             body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
         return self._request("POST", "/documents/edit", body=body)
 
     # ------------------------------------------------------------------ #

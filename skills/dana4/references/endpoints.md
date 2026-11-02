@@ -18,7 +18,7 @@ replacements are `PUT`, and `DELETE` deletes.
 
 The exception is the three document-content writes (`/documents/replace`, `/append`,
 `/edit`): a document is addressed there by its slash-bearing `path`, which cannot be a URL
-segment, so it stays in the body alongside the `task_id` that authorizes the write.
+segment, so it stays in the body alongside the `task_id` (or, in a chat, the `workspace_id`) that authorizes the write.
 
 ## Shared object shapes
 
@@ -131,13 +131,6 @@ mismatches and already-claimed tasks answer `400`. Once claimed the task is an o
 task, so it comes back through the normal `POST /tasks/take` loop with the task's params already
 in the payload.
 
-### `POST /tasks` — ✅ — start a new task in a journey
-```jsonc
-{ "step_name": "read_message", "workspace_id": "...", "channel_id": "...",
-  "params": { /* ... */ } | null }
-```
-Returns the new `task_id` as a plain string.
-
 ### `PATCH /tasks/{task_id}` — ✅ — update / report on a task
 ```jsonc
 { "status": "running|completed|failed|retry|...",
@@ -182,24 +175,25 @@ Returns `SearchResult[]`: `{ id, workspace_id, path, title, document_type, order
 ### `POST /documents` — ✅ — create a document
 ```jsonc
 { "workspace_id": "...", "path": "/notes/intro", "title": "Intro",
-  "content": "…", "document_type": "default", "overwrite": false }
+  "content": "…", "document_type": "default", "overwrite": false,
+  "task_id": "task:123" | null, "channel_id": "..." | null }   // origin: the task's channel, else channel_id
 ```
 Returns the document path. `document_type` is one of the values in the Document shape above.
 
 ### `POST /documents/replace` — ✅ — replace document content
 ```jsonc
-{ "path": "/notes/intro", "content": "new full content", "task_id": "task:123" }
+{ "path": "/notes/intro", "content": "new full content", "task_id": "task:123" }   // or "workspace_id" in a chat
 ```
 
 ### `POST /documents/append` — ✅ — append to a document
 ```jsonc
-{ "path": "/notes/intro", "content": "extra text", "task_id": "task:123" }
+{ "path": "/notes/intro", "content": "extra text", "task_id": "task:123" }   // or "workspace_id" in a chat
 ```
 
 ### `POST /documents/edit` — ✅ — string-replace edit (preferred for targeted changes)
 ```jsonc
 { "path": "/notes/intro", "old_string": "exact text to find", "new_string": "replacement",
-  "task_id": "task:123", "replace_all": false }   // replace_all optional, default false
+  "task_id": "task:123", "replace_all": false }   // or "workspace_id" instead of task_id in a chat; replace_all optional
 ```
 Returns `{ "path": "...", "replacements": 1 }`. The edit is applied server-side: only the
 affected document chunk is rewritten, so concurrent edits to other sections are preserved.

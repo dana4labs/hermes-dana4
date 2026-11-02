@@ -344,6 +344,7 @@ def dana4_document(args):
             title=args["title"],
             content=args.get("content", ""),
             task_id=task_id,
+            channel_id=args.get("channel_id"),
             document_type=args.get("document_type", "default"),
         )
     if op == "edit":
@@ -352,15 +353,22 @@ def dana4_document(args):
             old_string=args["old_string"],
             new_string=args["new_string"],
             task_id=task_id,
+            workspace_id=args.get("workspace_id"),
             replace_all=bool(args.get("replace_all", False)),
         )
     if op == "append":
         return client.document_append(
-            path=args["path"], content=args["content"], task_id=task_id
+            path=args["path"],
+            content=args["content"],
+            task_id=task_id,
+            workspace_id=args.get("workspace_id"),
         )
     if op == "replace":
         return client.document_replace(
-            path=args["path"], content=args["content"], task_id=task_id
+            path=args["path"],
+            content=args["content"],
+            task_id=task_id,
+            workspace_id=args.get("workspace_id"),
         )
     return {"error": f"unknown op {op!r}"}
 
@@ -380,9 +388,8 @@ _WS = {"type": "string", "description": "Dana4 workspace id."}
 _TASK_ID = {
     "type": "string",
     "description": (
-        "Task this write belongs to. REQUIRED for edit/append/replace — Dana4 "
-        "ties every document write to a task and returns 422 without it, even "
-        "though the published OpenAPI schema omits the field."
+        "Task this write belongs to. Optional: in a chat there is no task, so give "
+        "workspace_id instead (and channel_id on create)."
     ),
 }
 
@@ -554,7 +561,7 @@ SCHEMAS = {
             "Read and write workspace documents. op=list needs workspace_id; "
             "get needs workspace_id and path; create needs workspace_id, path "
             "and title; edit needs path, old_string and new_string; append and "
-            "replace need path and content. Every write needs task_id. An edit "
+            "replace need path and content. Writes need task_id or, in a chat (no task), workspace_id; create may also take channel_id to record the chat it came from. An edit "
             "returns 409 when the old_string is not found and 400 when it "
             "matches more than once — re-read the document and retry."
         ),
@@ -610,6 +617,10 @@ SCHEMAS = {
                     ],
                 },
                 "task_id": _TASK_ID,
+                "channel_id": {
+                    "type": "string",
+                    "description": "create only: the chat channel the document came from.",
+                },
             },
             "required": ["op"],
         },

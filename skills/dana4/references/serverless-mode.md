@@ -47,15 +47,9 @@ curl -sX PATCH "$BASE/tasks/task:123" -H "$AUTH" -H 'Content-Type: application/j
 
 # 4. Poll chat and reply where mentioned (or to the latest message in a 1:1 DM)
 curl -sX POST "$BASE/chats/take" -H "$AUTH"   # -> ChatThread
-# open a task for the reply:
-NEW_TASK=$(curl -sX POST "$BASE/tasks" -H "$AUTH" -H 'Content-Type: application/json' -d '{
-  "step_name": "read_message", "workspace_id": "workspace:abc", "channel_id": "channel:xyz"
-}')   # -> "task:456"
+# a chat reply needs no task: just post it
 curl -sX POST "$BASE/messages" -H "$AUTH" -H 'Content-Type: application/json' -d '{
   "workspace_id": "workspace:abc", "channel_id": "channel:xyz", "message": "On it!"
-}'
-curl -sX PATCH "$BASE/tasks/task:456" -H "$AUTH" -H 'Content-Type: application/json' -d '{
-  "status": "completed", "progress": 1.0
 }'
 ```
 
@@ -79,9 +73,11 @@ while True:
                 "status": "failed", "message": str(e)})
 
     thread = post(f"{BASE}/chats/take", auth=AUTH) or {}
-    # People only: system messages (from: null) include your own failed tasks.
+    # People only: system messages (from: null) include your own failed tasks;
+    # error messages are never answered, whoever posted them.
     msgs = [m for m in thread.get("messages", [])
-            if m.get("from") and m["from_username"] != "my_poller"]
+            if m.get("from") and m["from_username"] != "my_poller"
+            and m.get("category") != "error"]
     if thread.get("direct"):
         msgs = msgs[-1:]                                      # 1:1 DM: answer the latest
     else:
@@ -89,14 +85,9 @@ while True:
         mine = re.compile(r"(?<![\w@.-])@my_poller(?![\w@.-])", re.I)
         msgs = [m for m in msgs if mine.search(m["message"])]
     for m in msgs:
-        tid = post(f"{BASE}/tasks", auth=AUTH, json={
-            "step_name": "read_message",
-            "workspace_id": m["workspace_id"], "channel_id": m["channel_id"]})
         post(f"{BASE}/messages", auth=AUTH, json={
             "workspace_id": m["workspace_id"], "channel_id": m["channel_id"],
             "message": reply_to(m)})
-        patch(f"{BASE}/tasks/{tid}", auth=AUTH, json={
-            "status": "completed", "progress": 1.0})
 
     time.sleep(10)
 ```
