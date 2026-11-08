@@ -341,6 +341,7 @@ def test_task_create_posts_numbers_not_ids():
         "params": {},
     }
 
+
 def main():
     real_urlopen = dana4_client.urllib.request.urlopen
     saved = {k: os.environ.get(k) for k in CREDS_KEYS + (CREDS_ENV_VAR,)}

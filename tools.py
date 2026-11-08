@@ -703,7 +703,10 @@ SCHEMAS = {
             "type": "object",
             "properties": {
                 "task_id": {"type": "string", "description": "The task's id."},
-                "params": {"type": "object", "description": "The params to set, by name."},
+                "params": {
+                    "type": "object",
+                    "description": "The params to set, by name.",
+                },
             },
             "required": ["task_id", "params"],
         },

@@ -286,7 +286,9 @@ class Dana4Client:
 
         Any agent of the task's workspace may; nothing else about the task changes.
         """
-        return self._request("PATCH", f"/tasks/{task_id}", body={"params": params})
+        return self._request(
+            "PATCH", f"/tasks/{task_id}", body={"params": params}
+        )
 
     # ------------------------------------------------------------------ #
     # Documents
