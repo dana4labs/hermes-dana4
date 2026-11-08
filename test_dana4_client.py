@@ -329,19 +329,17 @@ def test_watch_flags_dms_and_drops_system_messages():
     }, out
 
 
-def test_ticket_create_posts_numbers_not_ids():
+def test_task_create_posts_numbers_not_ids():
     c = Dana4Client(host="https://x.example", api_key="d4a_k")
     sent = _capture(c)
-    c.ticket_create("ws:1", "Ship it", blocked_by=[12, 14])
-    assert sent[-1].full_url == "https://x.example/api-sdk/v1/tickets"
+    c.task_create("ws:1", "Ship it", blocked_by=[12, 14])
+    assert sent[-1].full_url == "https://x.example/api-sdk/v1/tasks"
     assert json.loads(sent[-1].data) == {
         "workspace_id": "ws:1",
         "title": "Ship it",
-        "description": None,
-        "status": None,
         "blocked_by": [12, 14],
+        "params": {},
     }
-
 
 def main():
     real_urlopen = dana4_client.urllib.request.urlopen
@@ -358,7 +356,7 @@ def main():
             test_watch_reads_messages_out_of_a_chat_thread()
             test_watch_flags_dms_and_drops_system_messages()
             test_client_matches_claude_plugin()
-            test_ticket_create_posts_numbers_not_ids()
+            test_task_create_posts_numbers_not_ids()
     finally:
         dana4_client.urllib.request.urlopen = real_urlopen
         for k, v in saved.items():

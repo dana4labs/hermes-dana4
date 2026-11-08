@@ -316,15 +316,25 @@ def dana4_memory_set(args):
 
 
 @_tool
-def dana4_ticket_create(args):
-    """Put a ticket on the workspace's board, optionally blocked by other tickets."""
-    return _client().ticket_create(
-        args["workspace_id"],
-        args["title"],
+def dana4_task_create(args):
+    """Create a task: for an agent's capability, a capability alone, or a ticket."""
+    return _client().task_create(
+        args.get("workspace_id"),
+        args.get("title"),
         description=args.get("description"),
-        status=args.get("status"),
+        agent=args.get("agent"),
+        capability=args.get("capability"),
+        params=args.get("params"),
+        board_status=args.get("status"),
         blocked_by=args.get("blocked_by"),
+        task_id=args.get("task_id"),
     )
+
+
+@_tool
+def dana4_task_set_params(args):
+    """Supply the params a task is missing, so it can run."""
+    return _client().task_set_params(args["task_id"], args["params"])
 
 
 @_tool
@@ -625,20 +635,39 @@ SCHEMAS = {
             "required": ["op"],
         },
     },
-    "dana4_ticket_create": {
-        "name": "dana4_ticket_create",
+    "dana4_task_create": {
+        "name": "dana4_task_create",
         "description": (
-            "Create a ticket on the workspace's board. Tickets are identified by "
-            "their per-workspace number (#42); blocked_by takes those numbers. "
-            "Returns the new ticket with its number."
+            "Create a task. With agent and capability that agent runs it; with "
+            "capability only, the workspace agent exposing it does (a person "
+            "picks when several do); with neither it is a ticket on the board "
+            "(title required). Tasks are identified by their per-workspace "
+            "number (#42); blocked_by takes those numbers. Returns task_id, "
+            "number, the agent that got it and the params it still misses."
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "workspace_id": _WS,
+                "task_id": {
+                    "type": "string",
+                    "description": "Your task: the new one becomes its child. Instead of workspace_id.",
+                },
                 "title": {
                     "type": "string",
-                    "description": "The ticket's title.",
+                    "description": "The task's title.",
+                },
+                "agent": {
+                    "type": "string",
+                    "description": "The agent to run it, with capability.",
+                },
+                "capability": {
+                    "type": "string",
+                    "description": "The capability to run.",
+                },
+                "params": {
+                    "type": "object",
+                    "description": "The capability's params, checked against its input schema.",
                 },
                 "description": {
                     "type": "string",
@@ -662,7 +691,21 @@ SCHEMAS = {
                     "description": "Numbers of the tickets that must finish first.",
                 },
             },
-            "required": ["workspace_id", "title"],
+        },
+    },
+    "dana4_task_set_params": {
+        "name": "dana4_task_set_params",
+        "description": (
+            "Supply the params a task is missing (any task of your workspaces), "
+            "so it can run. A blocked task lists them in missing_params."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task's id."},
+                "params": {"type": "object", "description": "The params to set, by name."},
+            },
+            "required": ["task_id", "params"],
         },
     },
     "dana4_search": {
@@ -689,7 +732,8 @@ HANDLERS = {
     "dana4_message_send": dana4_message_send,
     "dana4_memory_set": dana4_memory_set,
     "dana4_document": dana4_document,
-    "dana4_ticket_create": dana4_ticket_create,
+    "dana4_task_create": dana4_task_create,
+    "dana4_task_set_params": dana4_task_set_params,
     "dana4_search": dana4_search,
 }
 
@@ -744,6 +788,7 @@ EMOJI = {
     "dana4_message_send": "📤",
     "dana4_memory_set": "🧠",
     "dana4_document": "📄",
-    "dana4_ticket_create": "🎫",
+    "dana4_task_create": "🎫",
+    "dana4_task_set_params": "🔧",
     "dana4_search": "🔍",
 }

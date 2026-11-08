@@ -38,7 +38,8 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 | `dana4_message_send` | Post into a channel |
 | `dana4_memory_set` | Replace a channel's durable memory |
 | `dana4_document` | list / get / create / edit / append / replace |
-| `dana4_ticket_create` | Create a board ticket, optionally blocked by other tickets (by number) |
+| `dana4_task_create` | Create a task: for an agent's capability, a capability alone, or a board ticket (blockers by number) |
+| `dana4_task_set_params` | Supply the params a task is missing |
 | `dana4_search` | Hybrid keyword + semantic search |
 
 Plus `/dana4 status` in a session, `hermes dana4 enroll|status|creds` in the terminal, and a

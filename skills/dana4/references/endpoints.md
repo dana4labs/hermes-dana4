@@ -25,10 +25,11 @@ segment, so it stays in the body alongside the `task_id` (or, in a chat, the `wo
 ```jsonc
 // Task
 {
-  "id": "task:123", "number": 42 | null,  // board ticket #42; block new tickets on it with POST /tickets
+  "id": "task:123", "number": 42 | null,  // board ticket #42; block new tasks on it with POST /tasks
   "project_id": "...", "run_id": "..." /* null outside a workflow run */, "step_id": "...", "step_type": { /* ... */ },
   "status": "pending|assigned|blocked|retry|running|completed|failed",
   "params": { /* ... */ } | null, "result": { /* ... */ } | null,
+  "missing_params": [ { "name": "...", "intent": "...", "schema": { } } ] | null,  // what keeps it blocked
   "progress": 0.0, "execution_duration": null, "started_at": null,
   "time": { "created_at": "...", "updated_at": "...", "deleted_at": null }
 }
@@ -112,22 +113,26 @@ Returns `Task[]`. These are `user` step types: they carry a free-form descriptio
 instead of a capability, so `/tasks/take` never returns them and no handler runs. Read the
 description, do the work, then close the task with `PATCH /tasks/{task_id}`.
 
-### `GET /tasks/unassigned` — ✅ — list work nobody has picked up yet
-Returns `Task[]` across every workspace you belong to. Each has a `step_type` of
+### `GET /tasks/unassigned` — ✅ — list tasks with no executor yet
+Returns, across every workspace you belong to, the open tasks nobody runs yet and no open
+blocker holds:
 ```jsonc
-{ "unassigned": { "description": "…", "capability": "parse_document" | null } }
+{ "id": "...", "number": 42, "workspace_id": "...", "title": "…",
+  "capability": "parse_document" | null,   // the one its executor must expose
+  "params": { /* given when it was created */ } }
 ```
 Nothing is dispatched by reading this — poll it on whatever schedule suits you, then claim what
-you can handle. (People see the same queue as the workspace to-do list, so a task may vanish
-between listing and claiming.)
+you can handle. (People see the same tasks on the board, so one may vanish between listing and
+claiming.)
 
-### `POST /tasks/{task_id}/claim` — ✅ — claim an unassigned task for yourself
+### `POST /tasks/{task_id}/claim` — ✅ — claim a task with no executor yet for yourself
 ```jsonc
 { "capability": "parse_document" }
 ```
 Returns the claimed `Task`. You can only claim work for yourself, only with a capability you
 registered via `PATCH /agents/me`, and — if the task pinned one — only with that exact capability;
-mismatches and already-claimed tasks answer `400`. Once claimed the task is an ordinary agent
+the task's params must fit that capability's input schema. Mismatches, an open blocker and
+already-claimed tasks answer `400`. Once claimed the task is an ordinary agent
 task, so it comes back through the normal `POST /tasks/take` loop with the task's params already
 in the payload.
 
@@ -147,6 +152,11 @@ the task closes. Progress-only deltas smaller than 0.05 are dropped server-side.
 `credits_cost` is extra credits spent beyond the base cost reserved at dispatch — typically
 derived from token usage. It is charged **only on the terminal update**, so you may report a
 running total on every update without being billed for it more than once.
+
+`params` (`{ "params": { "topic": "…" } }`, with or without `status`) supplies params a task is
+missing: any member of its workspace may send them, keys and types are checked against the
+capability's input schema, and the task unblocks once nothing required is missing. Without
+`status`, nothing else about the task changes.
 
 ## Documents
 
@@ -262,7 +272,7 @@ Returns a JSON object (run params override workspace params).
 ### `GET /tasks/{task_id}/steps/{step_id}/result` — ✅ — read another step's result
 `step_id` names an earlier step of the same run as `task_id`. Returns whatever that step
 reported as `result_json`, or `null` if it has not produced one. This is how a step consumes
-upstream output, including the result of a `POST /agents/{agent_username}/execute` call.
+upstream output, including the result of a task created with `POST /tasks`.
 
 ### `GET /workspaces/{workspace_id}/blockers` — ✅ — missing inputs of blocked tasks
 Returns `Pipe[]`. Each is one task's missing required input: `task_id`, plus `output` `{ name, intent, example, schema }`.
@@ -279,26 +289,29 @@ Returns `AgentDescription[]`:
   "metadata": { } }
 ```
 
-### `POST /agents/{agent_username}/execute` — ✅ — ask an agent to run a capability
-```jsonc
-{ "tool_key": "summarize",
-  "inputs": { /* ... */ } | null, "metadata": { } | null,
-  "task_id": "task:123", "channel_id": "..." | null }
-```
-Returns `{ "task_id": "task:456" }` — execution is asynchronous.
+## Creating tasks
 
-## Tickets
-
-### `POST /tickets` — ✅ — put a ticket on the workspace board
+### `POST /tasks` — ✅ — delegate work, or put a ticket on the board
 ```jsonc
-{ "workspace_id": "...", "title": "Fix the login redirect",
+{ "task_id": "task:123" | null,      // your task: the new one is its child, in its project and run
+  "workspace_id": "..." | null,      // instead of task_id (a chat turn): the main project
+  "title": "Fix the login redirect" | null,   // required unless an agent runs it at once
   "description": "markdown" | null,
-  "status": "backlog|todo|in_progress|in_review|done|canceled" | null,   // default backlog
-  "blocked_by": [12, 14] }   // ticket numbers
+  "agent": "other" | null, "capability": "summarize" | null,
+  "params": { /* the capability's inputs, all or some */ },
+  "blocked_by": [12, 14],            // ticket numbers
+  "parent": 7 | null,                // ticket number; not with task_id
+  "board_status": "backlog|todo|in_progress|in_review|done|canceled" | null,  // while nobody runs it
+  "channel_id": "..." | null }
 ```
-Tickets are identified by their per-workspace **number** (`#42` in the app), never by record
-id. `blocked_by` takes numbers; a number that is not a ticket of the workspace is a `400`.
-Returns `{ "workspace_id", "number", "title", "status", "blocked_by": [numbers] }`.
+Who runs it: `agent` and `capability` → that agent; `capability` only → the workspace agent
+exposing it (with several, or none, it waits for a person to pick); neither → a ticket a person
+assigns. `params` are checked against the capability's input schema once it has an agent: an
+unknown key or a wrong type is a `400`, while a missing required one blocks the task until
+someone supplies it with `PATCH /tasks/{task_id}` `{ "params": { … } }` (any agent or person of
+the workspace may). Tasks are identified by their per-workspace **number** (`#42` in the app);
+a number that is not a ticket of the workspace is a `400`. Execution is asynchronous.
+Returns `{ "task_id", "number", "workspace_id", "agent" | null, "status" | null, "missing_params" | null }`.
 
 ## Automations & workflows
 

@@ -60,10 +60,13 @@ unprompted. For continuous operation, put `dana4_watch` on a schedule (below).
 
 ## Tickets
 
-`dana4_ticket_create` puts a ticket on the workspace's board. Tickets are identified by a
-per-workspace number (`#42`), and `blocked_by` takes those numbers. The reply carries the new
-ticket's `number` — keep it to block later tickets on this one. A number that is not a ticket
-of the workspace is a `400`.
+`dana4_task_create` with no `agent` or `capability` puts a ticket on the workspace's board.
+Tickets are identified by a per-workspace number (`#42`), and `blocked_by` takes those numbers.
+The reply carries the new task's `number` — keep it to block later tickets on this one. A number
+that is not a ticket of the workspace is a `400`. With `agent` and `capability` that agent runs
+it; with `capability` alone the workspace agent exposing it does. `params` are checked against
+the capability's input schema; if the reply lists `missing_params`, supply them with
+`dana4_task_set_params`.
 
 ## Documents
 

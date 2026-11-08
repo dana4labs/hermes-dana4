@@ -239,11 +239,11 @@ class Dana4Client:
         return self._request("GET", "/tasks/assigned")
 
     def tasks_unassigned(self) -> List[Any]:
-        """POST /tasks/unassigned — work nobody has picked up yet."""
+        """GET /tasks/unassigned — tasks with no executor yet (id, capability, params)."""
         return self._request("GET", "/tasks/unassigned")
 
     def tasks_claim(self, task_id: str, capability: str) -> Any:
-        """POST /tasks/{task_id}/claim — claim an unassigned task for yourself."""
+        """POST /tasks/{task_id}/claim — claim a task with no executor yet for yourself."""
         return self._request(
             "POST",
             f"/tasks/{task_id}/claim",
@@ -280,6 +280,13 @@ class Dana4Client:
                 else result_json
             )
         return self._request("PATCH", f"/tasks/{task_id}", body=body)
+
+    def task_set_params(self, task_id: str, params: Dict[str, Any]) -> Any:
+        """PATCH /tasks/{task_id} with params only — supply what a task is missing.
+
+        Any agent of the task's workspace may; nothing else about the task changes.
+        """
+        return self._request("PATCH", f"/tasks/{task_id}", body={"params": params})
 
     # ------------------------------------------------------------------ #
     # Documents
@@ -498,56 +505,48 @@ class Dana4Client:
         """GET /workspaces/{workspace_id}/agents — discover agents' capabilities."""
         return self._request("GET", f"/workspaces/{workspace_id}/agents")
 
-    def agents_execute(
+    def task_create(
         self,
-        tool_key: str,
-        agent_username: str,
-        inputs: Optional[Any] = None,
-        metadata: Optional[Any] = None,
+        workspace_id: Optional[str] = None,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        agent: Optional[str] = None,
+        capability: Optional[str] = None,
+        params: Optional[Dict[str, Any]] = None,
+        blocked_by: Optional[List[int]] = None,
+        parent: Optional[int] = None,
+        board_status: Optional[str] = None,
         task_id: Optional[str] = None,
         channel_id: Optional[str] = None,
     ) -> Any:
-        """POST /agents/{agent_username}/execute — ask an agent to run a capability."""
-        body: Dict[str, Any] = {"tool_key": tool_key}
-        if inputs is not None:
-            body["inputs"] = inputs
-        if metadata is not None:
-            body["metadata"] = metadata
-        if task_id is not None:
-            body["task_id"] = task_id
-        if channel_id is not None:
-            body["channel_id"] = channel_id
-        return self._request(
-            "POST", f"/agents/{agent_username}/execute", body=body
-        )
+        """POST /tasks — create a task.
 
-    # ------------------------------------------------------------------ #
-    # Tickets
-    # ------------------------------------------------------------------ #
-    def ticket_create(
-        self,
-        workspace_id: str,
-        title: str,
-        description: Optional[str] = None,
-        status: Optional[str] = None,
-        blocked_by: Optional[List[int]] = None,
-    ) -> Any:
-        """POST /tickets — put a ticket on the board.
-
-        Tickets are referred to by their per-workspace number: blocked_by=[12]
-        means ticket #12 must finish first.
+        Give agent and capability (that agent runs it), capability only (the
+        workspace agent exposing it runs it; with several, a person picks), or
+        neither (a ticket a person assigns; title required). params are checked
+        against the capability's input schema; a missing required one blocks the
+        task until someone sets it (task_set_params). task_id makes it a child of
+        that task; blocked_by and parent take ticket numbers (blocked_by=[12]
+        means #12 must finish first).
         """
-        return self._request(
-            "POST",
-            "/tickets",
-            body={
-                "workspace_id": workspace_id,
-                "title": title,
-                "description": description,
-                "status": status,
-                "blocked_by": blocked_by or [],
-            },
-        )
+        body: Dict[str, Any] = {
+            "blocked_by": blocked_by or [],
+            "params": params or {},
+        }
+        for key, value in (
+            ("workspace_id", workspace_id),
+            ("title", title),
+            ("description", description),
+            ("agent", agent),
+            ("capability", capability),
+            ("parent", parent),
+            ("board_status", board_status),
+            ("task_id", task_id),
+            ("channel_id", channel_id),
+        ):
+            if value is not None:
+                body[key] = value
+        return self._request("POST", "/tasks", body=body)
 
     # ------------------------------------------------------------------ #
     # Automations & workflows
