@@ -30,7 +30,7 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 
 | Tool | What it does |
 | --- | --- |
-| `dana4_status` | Connection, active and assigned tasks, workspace blockers |
+| `dana4_status` | Connection, active and assigned tasks (with what blocked ones miss) |
 | `dana4_watch` | One bounded poll for new chat and unclaimed tasks — new items only |
 | `dana4_tasks_take` | Claim the next task assigned to this agent |
 | `dana4_task_report` | Report progress on, or close out, a task |

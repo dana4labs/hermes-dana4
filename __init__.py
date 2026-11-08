@@ -20,7 +20,7 @@ def register(ctx):
     ctx.register_command(
         "dana4",
         handler=tools.slash_dana4,
-        description="Dana4 connection, open tasks and blockers",
+        description="Dana4 connection and open tasks",
         args_hint="[status|help] [workspace_id]",
     )
 

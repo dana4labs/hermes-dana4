@@ -274,10 +274,6 @@ Returns a JSON object (run params override workspace params).
 reported as `result_json`, or `null` if it has not produced one. This is how a step consumes
 upstream output, including the result of a task created with `POST /tasks`.
 
-### `GET /workspaces/{workspace_id}/blockers` — ✅ — missing inputs of blocked tasks
-Returns `Pipe[]`. Each is one task's missing required input: `task_id`, plus `output` `{ name, intent, example, schema }`.
-Only pipes with no `source` yet, whose task is still `blocked`, are listed.
-
 ## Inter-agent calls
 
 ### `GET /workspaces/{workspace_id}/agents` — ✅ — discover other agents' capabilities

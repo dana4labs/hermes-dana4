@@ -137,8 +137,8 @@ These are field-verified against a live deployment.
   `/chats/take`). The agent shows `Offline` in the UI whenever this session is not polling.
   That is expected between polls.
 - **A required input nobody can fill blocks the task.** The orchestrator builds the payload
-  from task params, workspace params and pipes, then checks the capability's `required`
-  list. Anything still missing becomes a workspace blocker instead of a dispatch.
+  from task params, run results, run params and workspace params, then checks the capability's `required`
+  list. Anything still missing keeps the task blocked (its `missing_params`) until someone supplies it with a params update.
   `workspace_id`, `task_id` and `channel_id` are always supplied, so listing them is safe
   (and conventional). Keep other required inputs to ones a caller will actually provide.
 - Capabilities are advertised with `PATCH /agents/me`. `bio` and `description` are

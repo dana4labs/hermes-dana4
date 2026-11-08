@@ -496,10 +496,6 @@ class Dana4Client:
         """GET /tasks/{task_id}/params — params merged for a task's run."""
         return self._request("GET", f"/tasks/{task_id}/params")
 
-    def blockers(self, workspace_id: str) -> List[Any]:
-        """GET /workspaces/{workspace_id}/blockers — missing inputs of blocked tasks."""
-        return self._request("GET", f"/workspaces/{workspace_id}/blockers")
-
     # ------------------------------------------------------------------ #
     # Inter-agent calls
     # ------------------------------------------------------------------ #

@@ -78,7 +78,7 @@ def _tool(fn):
 # ---------------------------------------------------------------------- #
 @_tool
 def dana4_status(args):
-    """Connection, open tasks and blockers.
+    """Connection and open tasks (a blocked one lists its `missing_params`).
 
     This is the tool to reach for when something is not working, so the local
     configuration is always reported even when the calls themselves fail —
@@ -97,17 +97,10 @@ def dana4_status(args):
     out["host"] = client.host
     out["api_key_set"] = bool(client.api_key)
 
-    workspace_id = args.get("workspace_id")
     for key, call in (
         ("active_tasks", client.tasks_active),
         ("assigned_tasks", client.tasks_assigned),
-        (
-            "blockers",
-            (lambda: client.blockers(workspace_id)) if workspace_id else None,
-        ),
     ):
-        if call is None:
-            continue
         try:
             out[key] = call()
         except (Dana4Error, ValueError) as e:
@@ -408,15 +401,11 @@ SCHEMAS = {
         "name": "dana4_status",
         "description": (
             "Show the Dana4 connection (host, whether an API key is "
-            "stored), the agent's active and assigned tasks, and — with a "
-            "workspace_id — that workspace's blockers. Read-only. Start here "
-            "when something is not working."
+            "stored) and the agent's active and assigned tasks; a blocked "
+            "task lists the params it misses in missing_params. Read-only. "
+            "Start here when something is not working."
         ),
-        "parameters": {
-            "type": "object",
-            "properties": {"workspace_id": _WS},
-            "required": [],
-        },
+        "parameters": {"type": "object", "properties": {}, "required": []},
     },
     "dana4_watch": {
         "name": "dana4_watch",
@@ -750,7 +739,7 @@ def slash_dana4(raw_args: str) -> str:
     sub = parts[0] if parts else "status"
     if sub in ("help", "-h", "--help"):
         return (
-            "/dana4 status [workspace_id] — connection, open tasks, blockers\n"
+            "/dana4 status               — connection and open tasks\n"
             "hermes dana4 enroll         — connect this agent (once, at setup)\n"
             "hermes dana4 creds          — show what is configured, offline\n"
             "Ask in plain language for anything else: 'check my Dana4 tasks'."
@@ -758,9 +747,7 @@ def slash_dana4(raw_args: str) -> str:
     if sub != "status":
         return f"Unknown subcommand {sub!r}. Try /dana4 help."
 
-    payload = json.loads(
-        dana4_status({"workspace_id": parts[1]} if len(parts) > 1 else {})
-    )
+    payload = json.loads(dana4_status({}))
     lines = [
         f"host:     {payload.get('host') or '(not set)'}",
         f"api key:  {'stored' if payload.get('api_key_set') else 'MISSING — run hermes dana4 enroll'}",
@@ -768,7 +755,6 @@ def slash_dana4(raw_args: str) -> str:
     for label, key in (
         ("active", "active_tasks"),
         ("assigned", "assigned_tasks"),
-        ("blockers", "blockers"),
     ):
         if key in payload:
             lines.append(f"{label + ':':9} {len(payload[key] or [])}")
