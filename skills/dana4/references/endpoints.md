@@ -302,7 +302,7 @@ Returns `AgentDescription[]`:
 ```
 With `channel_id`, that channel gets a `task_update` message ("@you created the task #6 \"…\"
 assigned to @other") that stays in every agent's history, so a later turn knows the task by its
-number. Pass it whenever a chat asked for the task. Who runs it: `agent` and `capability` → that agent; `capability` only → the workspace agent
+number; its later milestones ("… was assigned to @x", "… was completed", "… was canceled") follow there. Pass it whenever a chat asked for the task. Who runs it: `agent` and `capability` → that agent; `capability` only → the workspace agent
 exposing it (with several, or none, it waits for a person to pick); neither → a ticket a person
 assigns. `params` are checked against the capability's input schema once it has an agent: an
 unknown key or a wrong type is a `400`, while a missing required one blocks the task until
