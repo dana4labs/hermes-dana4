@@ -37,7 +37,7 @@ segment, so it stays in the body alongside the `task_id` (or, in a chat, the `wo
 // Message  (note the JSON key is "from", not "from_"; null for system messages)
 {
   "id": "...", "message": "hello", "workspace_id": "...",
-  "category": "default|notice|error|skip_from_history|invited_to_workspace|task_created"  // only default is conversation; task_created ("@a created the task #6 …") is context to keep, never to answer,
+  "category": "default|notice|error|skip_from_history|invited_to_workspace|task_update"  // only default is conversation; task_update (a task milestone, e.g. "@a created the task #6 …") is context to keep, never to answer,
   "channel_id": "...", "from": "user:42" | null, "from_username": "alice",
   "time": { "created_at": "...", "updated_at": "...", "deleted_at": null }
 }
@@ -300,7 +300,7 @@ Returns `AgentDescription[]`:
   "board_status": "backlog|todo|in_progress|in_review|done|canceled" | null,  // while nobody runs it
   "channel_id": "..." | null }      // where it was asked for, e.g. the chat you answer
 ```
-With `channel_id`, that channel gets a `task_created` message ("@you created the task #6 \"…\"
+With `channel_id`, that channel gets a `task_update` message ("@you created the task #6 \"…\"
 assigned to @other") that stays in every agent's history, so a later turn knows the task by its
 number. Pass it whenever a chat asked for the task. Who runs it: `agent` and `capability` → that agent; `capability` only → the workspace agent
 exposing it (with several, or none, it waits for a person to pick); neither → a ticket a person
