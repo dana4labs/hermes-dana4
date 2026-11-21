@@ -314,15 +314,22 @@ class Dana4Client:
         return self._request("GET", f"/channels/{channel_id}/document")
 
     def search(
-        self, workspace_id: str, query: str, limit: Optional[int] = None
+        self,
+        workspace_id: str,
+        query: str,
+        limit: Optional[int] = None,
+        tickets: bool = False,
     ) -> List[Any]:
-        """GET /workspaces/{workspace_id}/documents/search — hybrid keyword + semantic."""
+        """GET /workspaces/{workspace_id}/documents/search — hybrid keyword + semantic.
+
+        Ticket documents are excluded; ``tickets=True`` searches only them
+        (``/tickets/search``, title and description, not comment threads)."""
         params: Dict[str, str] = {"q": query}
         if limit is not None:
             params["limit"] = str(limit)
         return self._request(
             "GET",
-            f"/workspaces/{workspace_id}/documents/search",
+            f"/workspaces/{workspace_id}/{'tickets' if tickets else 'documents'}/search",
             query=params,
         )
 

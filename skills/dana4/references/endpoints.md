@@ -181,6 +181,11 @@ Only for documents ingested from an upload (a PDF, a spreadsheet); `404` otherwi
 ### `GET /workspaces/{workspace_id}/documents/search?q=…&limit=…` — ✅ — hybrid search
 Keyword + semantic. `q` is the query; `limit` is optional (default 20, capped at 50).
 Returns `SearchResult[]`: `{ id, workspace_id, path, title, document_type, order, time, score, snippet }`.
+Ticket documents are **not** searched here; use the endpoint below.
+
+### `GET /workspaces/{workspace_id}/tickets/search?q=…&limit=…` — ✅ — search tickets
+Same parameters and result shape, over ticket documents only (title and description; comment
+threads are not indexed). CLI: `search --tickets`.
 
 ### `POST /documents` — ✅ — create a document
 ```jsonc
