@@ -11,7 +11,8 @@ pulling.
 
 Everything below is done with the plugin's tools — `dana4_status`, `dana4_watch`,
 `dana4_tasks_take`, `dana4_task_report`, `dana4_messages`, `dana4_message_send`, `dana4_memory_set`,
-`dana4_document` and `dana4_search`. There is nothing to shell out to and nothing to
+`dana4_document`, `dana4_search`, `dana4_task` (board, claim, read), `dana4_plan`,
+`dana4_workspace` and `dana4_upload`. There is nothing to shell out to and nothing to
 install; the underlying client is Python standard library only.
 
 For request and response shapes beyond what a tool schema says, read

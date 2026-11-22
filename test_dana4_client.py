@@ -376,6 +376,52 @@ def test_new_endpoints():
     }
 
 
+def test_asset_upload_sets_content_type(tmp):
+    f = tmp / "report.pdf"
+    f.write_bytes(b"%PDF")
+    c = Dana4Client(host="https://x.example", api_key="d4a_k")
+    sent = []
+
+    class _Resp:
+        def __init__(self, body):
+            self.body = body
+
+        def read(self):
+            return self.body
+
+        def close(self):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        sent.append(req)
+        if req.full_url.endswith("/uploads"):
+            return _Resp(
+                b'{"url": "https://s3.example/put", "key": "ws/report-1.pdf"}'
+            )
+        return _Resp(b"{}")
+
+    dana4_client.urllib.request.urlopen = fake_urlopen
+    c.asset_upload(str(f), workspace_id="ws")
+    presign, put, register = sent
+    assert json.loads(presign.data) == {
+        "workspace_id": "ws",
+        "asset_name": "report",
+        "file_ext": "pdf",
+    }
+    assert put.get_method() == "PUT" and put.data == b"%PDF"
+    assert put.headers["Content-type"] == "application/pdf", put.headers
+    assert json.loads(register.data) == {
+        "workspace_id": "ws",
+        "key": "ws/report-1.pdf",
+    }
+
+
 def main():
     real_urlopen = dana4_client.urllib.request.urlopen
     saved = {k: os.environ.get(k) for k in CREDS_KEYS + (CREDS_ENV_VAR,)}
@@ -393,6 +439,7 @@ def main():
             test_client_matches_claude_plugin()
             test_task_create_posts_numbers_not_ids()
             test_new_endpoints()
+            test_asset_upload_sets_content_type(tmp)
     finally:
         dana4_client.urllib.request.urlopen = real_urlopen
         for k, v in saved.items():

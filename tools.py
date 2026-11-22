@@ -492,22 +492,15 @@ def dana4_workspace(args):
 
 @_tool
 def dana4_upload(args):
-    """Store a local file as an asset of a task; returns the registered asset."""
-    import os
-    import urllib.request
-
-    client = _client()
-    path = os.path.expanduser(args["path"])
-    base, ext = os.path.splitext(os.path.basename(path))
-    with open(path, "rb") as fh:
-        data = fh.read()
-    pre = client.upload_presigned(
-        args["task_id"], args.get("name") or base, ext.lstrip(".")
+    """Store a local file as an asset of a task or workspace; returns the asset."""
+    if not args.get("task_id") and not args.get("workspace_id"):
+        return {"error": "give task_id, or workspace_id when there is no task"}
+    return _client().asset_upload(
+        args["path"],
+        task_id=args.get("task_id"),
+        workspace_id=args.get("workspace_id"),
+        name=args.get("name"),
     )
-    urllib.request.urlopen(
-        urllib.request.Request(pre["url"], data=data, method="PUT"), timeout=60
-    ).close()
-    return client.asset_register(args["task_id"], pre["key"])
 
 
 # ---------------------------------------------------------------------- #
@@ -770,7 +763,10 @@ SCHEMAS = {
                 "task_id": _TASK_ID,
                 "channel_id": {
                     "type": "string",
-                    "description": "create only: the chat channel the document came from.",
+                    "description": (
+                        "create: the chat channel the document came from; "
+                        "get_by_channel: the channel whose document to read."
+                    ),
                 },
             },
             "required": ["op"],
@@ -990,13 +986,17 @@ SCHEMAS = {
     },
     "dana4_upload": {
         "name": "dana4_upload",
-        "description": "Store a local file as an asset of a task (presign, upload, register).",
+        "description": (
+            "Store a local file as an asset of a task, or of a workspace in a "
+            "chat (presign, upload, register)."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
-                "task_id": {
+                "task_id": _TASK_ID,
+                "workspace_id": {
                     "type": "string",
-                    "description": "The task the file belongs to.",
+                    "description": "Workspace the file belongs to, when there is no task_id.",
                 },
                 "path": {"type": "string", "description": "Local file path."},
                 "name": {
@@ -1004,7 +1004,7 @@ SCHEMAS = {
                     "description": "Asset name; defaults to the file's name.",
                 },
             },
-            "required": ["task_id", "path"],
+            "required": ["path"],
         },
     },
 }

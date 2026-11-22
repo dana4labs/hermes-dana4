@@ -693,25 +693,72 @@ class Dana4Client:
     # ------------------------------------------------------------------ #
     # Assets
     # ------------------------------------------------------------------ #
-    def upload_presigned(
-        self, task_id: str, asset_name: str, file_ext: str
-    ) -> Any:
-        """POST /uploads — get a presigned PUT URL for asset upload."""
-        return self._request(
-            "POST",
-            "/uploads",
-            body={
-                "task_id": task_id,
-                "asset_name": asset_name,
-                "file_ext": file_ext,
-            },
-        )
+    @staticmethod
+    def _scope(
+        task_id: Optional[str], workspace_id: Optional[str]
+    ) -> Dict[str, Any]:
+        body: Dict[str, Any] = {}
+        if task_id is not None:
+            body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
+        return body
 
-    def asset_register(self, task_id: str, key: str) -> Any:
-        """POST /assets — register an uploaded asset."""
-        return self._request(
-            "POST", "/assets", body={"task_id": task_id, "key": key}
+    def upload_presigned(
+        self,
+        task_id: Optional[str],
+        asset_name: str,
+        file_ext: str,
+        workspace_id: Optional[str] = None,
+    ) -> Any:
+        """POST /uploads — presigned PUT URL. Give ``task_id`` or ``workspace_id``."""
+        body = self._scope(task_id, workspace_id)
+        body.update(asset_name=asset_name, file_ext=file_ext)
+        return self._request("POST", "/uploads", body=body)
+
+    def asset_register(
+        self,
+        task_id: Optional[str],
+        key: str,
+        workspace_id: Optional[str] = None,
+    ) -> Any:
+        """POST /assets — register an upload. Give ``task_id`` or ``workspace_id``."""
+        body = self._scope(task_id, workspace_id)
+        body["key"] = key
+        return self._request("POST", "/assets", body=body)
+
+    def asset_upload(
+        self,
+        path: str,
+        task_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+        name: Optional[str] = None,
+    ) -> Any:
+        """Presign, PUT the file's bytes, register: returns the registered asset."""
+        import mimetypes
+
+        path = os.path.expanduser(path)
+        base, ext = os.path.splitext(os.path.basename(path))
+        with open(path, "rb") as fh:
+            data = fh.read()
+        pre = self.upload_presigned(
+            task_id, name or base, ext.lstrip("."), workspace_id
         )
+        # Without it urllib sends application/x-www-form-urlencoded, and S3
+        # serves the asset with that type.
+        ctype = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        req = urllib.request.Request(
+            pre["url"], data=data, method="PUT", headers={"Content-Type": ctype}
+        )
+        where = "<presigned upload URL>"
+        try:
+            urllib.request.urlopen(req, timeout=60).close()
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", "replace")
+            raise Dana4Error(e.code, "PUT", where, body) from e
+        except urllib.error.URLError as e:
+            raise Dana4Error(0, "PUT", where, str(e.reason)) from e
+        return self.asset_register(task_id, pre["key"], workspace_id)
 
     # ------------------------------------------------------------------ #
     # Other
