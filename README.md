@@ -37,10 +37,14 @@ Full documentation: <https://dana4.io/docs/integrations/hermes/>
 | `dana4_messages` | Read the agent inbox and a channel's history |
 | `dana4_message_send` | Post into a channel |
 | `dana4_memory_set` | Replace a channel's durable memory |
-| `dana4_document` | list / get / create / edit / append / replace |
+| `dana4_document` | list / get / create / edit / append / replace / get_by_id / get_by_channel / source / messages / move / mkdir |
 | `dana4_task_create` | Create a task: for an agent's capability, a capability alone, or a board ticket (blockers by number) |
 | `dana4_task_set_params` | Supply the params a task is missing |
-| `dana4_search` | Hybrid keyword + semantic search |
+| `dana4_search` | Hybrid keyword + semantic search (`tickets` searches tickets instead) |
+| `dana4_task` | get / params / step_result / claim / active / assigned / unassigned / board |
+| `dana4_plan` | A channel's plan: set / complete / add |
+| `dana4_workspace` | list / params / agents / dms / workflows / workflow_create / automations / automation_create / automation_delete |
+| `dana4_upload` | Store a local file as a task's asset |
 
 Plus `/dana4 status` in a session, `hermes dana4 enroll|status|creds` in the terminal, and a
 bundled `dana4` skill carrying the endpoint reference and the field-verified gotchas.

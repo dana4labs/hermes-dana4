@@ -373,15 +373,137 @@ def dana4_document(args):
             task_id=task_id,
             workspace_id=args.get("workspace_id"),
         )
+    if op == "get_by_id":
+        return client.document_get_by_id(args["document_id"])
+    if op == "get_by_channel":
+        return client.document_get_by_channel(args["channel_id"])
+    if op == "source":
+        return client.document_source(args["document_id"])
+    if op == "messages":
+        return client.document_messages(
+            args["document_id"], since=args.get("since"), until=args.get("until")
+        )
+    if op == "move":
+        return client.document_move(
+            args["from_path"],
+            args["to_path"],
+            task_id=task_id,
+            workspace_id=args.get("workspace_id"),
+        )
+    if op == "mkdir":
+        return client.folder_create(
+            args["path"], task_id=task_id, workspace_id=args.get("workspace_id")
+        )
     return {"error": f"unknown op {op!r}"}
 
 
 @_tool
 def dana4_search(args):
-    """Hybrid keyword + semantic search over a workspace."""
+    """Hybrid keyword + semantic search over a workspace's documents or tickets."""
     return _client().search(
-        args["workspace_id"], args["query"], limit=args.get("limit")
+        args["workspace_id"],
+        args["query"],
+        limit=args.get("limit"),
+        tickets=bool(args.get("tickets", False)),
     )
+
+
+@_tool
+def dana4_task(args):
+    """Read a task, claim one, or look at the board: switched on `op`."""
+    client = _client()
+    op = args["op"]
+    if op == "get":
+        return client.task_get(args["task_id"])
+    if op == "params":
+        return client.task_params(args["task_id"])
+    if op == "step_result":
+        return client.task_step_result(args["task_id"], args["step_id"])
+    if op == "claim":
+        return client.tasks_claim(args["task_id"], args["capability"])
+    if op == "active":
+        return client.tasks_active(channel_id=args.get("channel_id"))
+    if op == "assigned":
+        return client.tasks_assigned()
+    if op == "unassigned":
+        return client.tasks_unassigned()
+    if op == "board":
+        return client.board(args["workspace_id"])
+    return {"error": f"unknown op {op!r}"}
+
+
+@_tool
+def dana4_plan(args):
+    """A channel's plan checklist: set, complete an item, or add one."""
+    client = _client()
+    op = args["op"]
+    if op == "set":
+        return client.channel_plan_set(args["channel_id"], args["plan"])
+    if op == "complete":
+        return client.channel_plan_complete_item(args["channel_id"], args["item"])
+    if op == "add":
+        return client.channel_plan_add_item(args["channel_id"], args["item"])
+    return {"error": f"unknown op {op!r}"}
+
+
+@_tool
+def dana4_workspace(args):
+    """Workspaces, their params, agents, DMs, workflows and automations: by `op`."""
+    client = _client()
+    op = args["op"]
+    if op == "list":
+        return client.workspaces_list()
+    ws = args["workspace_id"]
+    if op == "params":
+        return client.workspace_params(ws)
+    if op == "agents":
+        return client.agents_tools(ws)
+    if op == "dms":
+        return client.private_channels(ws)
+    if op == "workflows":
+        return client.workflows_list(ws)
+    if op == "workflow_create":
+        return client.workflow_create(
+            ws,
+            args["name"],
+            definition=args.get("definition"),
+            description=args.get("description"),
+        )
+    if op == "automations":
+        return client.automations_list(ws)
+    if op == "automation_create":
+        return client.automation_create(
+            ws,
+            args["workflow_id"],
+            args["name"],
+            args["schedule_frequency"],
+            schedule_day=args.get("schedule_day"),
+            schedule_time=args.get("schedule_time", "09:00"),
+            schedule_timezone=args.get("schedule_timezone", "UTC"),
+        )
+    if op == "automation_delete":
+        return client.automation_delete(args["automation_id"])
+    return {"error": f"unknown op {op!r}"}
+
+
+@_tool
+def dana4_upload(args):
+    """Store a local file as an asset of a task; returns the registered asset."""
+    import os
+    import urllib.request
+
+    client = _client()
+    path = os.path.expanduser(args["path"])
+    base, ext = os.path.splitext(os.path.basename(path))
+    with open(path, "rb") as fh:
+        data = fh.read()
+    pre = client.upload_presigned(
+        args["task_id"], args.get("name") or base, ext.lstrip(".")
+    )
+    urllib.request.urlopen(
+        urllib.request.Request(pre["url"], data=data, method="PUT"), timeout=60
+    ).close()
+    return client.asset_register(args["task_id"], pre["key"])
 
 
 # ---------------------------------------------------------------------- #
@@ -560,7 +682,7 @@ SCHEMAS = {
             "Read and write workspace documents. op=list needs workspace_id; "
             "get needs workspace_id and path; create needs workspace_id, path "
             "and title; edit needs path, old_string and new_string; append and "
-            "replace need path and content. Writes need task_id or, in a chat (no task), workspace_id; create may also take channel_id to record the chat it came from. An edit "
+            "replace need path and content; get_by_id, source and messages need document_id; get_by_channel needs channel_id; move needs from_path and to_path; mkdir needs path (like mkdir -p). Writes need task_id or, in a chat (no task), workspace_id; create may also take channel_id to record the chat it came from. An edit "
             "returns 409 when the old_string is not found and 400 when it "
             "matches more than once — re-read the document and retry."
         ),
@@ -576,7 +698,24 @@ SCHEMAS = {
                         "edit",
                         "append",
                         "replace",
+                        "get_by_id",
+                        "get_by_channel",
+                        "source",
+                        "messages",
+                        "move",
+                        "mkdir",
                     ],
+                },
+                "document_id": {
+                    "type": "string",
+                    "description": "For get_by_id, source and messages (a ticket's comment threads).",
+                },
+                "since": {"type": "string", "description": "messages: RFC 3339 lower bound."},
+                "until": {"type": "string", "description": "messages: RFC 3339 upper bound."},
+                "from_path": {"type": "string", "description": "move: the source path."},
+                "to_path": {
+                    "type": "string",
+                    "description": "move: an existing folder to move into, or the new path.",
                 },
                 "workspace_id": _WS,
                 "path": {
@@ -709,8 +848,117 @@ SCHEMAS = {
                 "workspace_id": _WS,
                 "query": {"type": "string", "description": "What to look for."},
                 "limit": {"type": "integer", "description": "Max results."},
+                "tickets": {
+                    "type": "boolean",
+                    "description": "Search only tickets (title and description) instead of documents.",
+                },
             },
             "required": ["workspace_id", "query"],
+        },
+    },
+    "dana4_task": {
+        "name": "dana4_task",
+        "description": (
+            "Inspect or claim tasks. op=get (task_id: its ticket and whole "
+            "description), params (task_id), step_result (task_id, step_id), "
+            "claim (task_id, capability: take an unassigned task for yourself), "
+            "active (optional channel_id), assigned, unassigned, board "
+            "(workspace_id)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "op": {
+                    "type": "string",
+                    "enum": [
+                        "get",
+                        "params",
+                        "step_result",
+                        "claim",
+                        "active",
+                        "assigned",
+                        "unassigned",
+                        "board",
+                    ],
+                },
+                "task_id": {"type": "string", "description": "The task's id."},
+                "step_id": {"type": "string", "description": "step_result: the step."},
+                "capability": {"type": "string", "description": "claim: the capability to run."},
+                "channel_id": {"type": "string", "description": "active: only this channel's tasks."},
+                "workspace_id": _WS,
+            },
+            "required": ["op"],
+        },
+    },
+    "dana4_plan": {
+        "name": "dana4_plan",
+        "description": (
+            "A channel's plan checklist. op=set (channel_id, plan: replaces the "
+            "whole plan), complete (channel_id, item: check one off by label), "
+            "add (channel_id, item: append an unchecked item)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "op": {"type": "string", "enum": ["set", "complete", "add"]},
+                "channel_id": {"type": "string", "description": "The channel."},
+                "plan": {"type": "string", "description": "set: the markdown checklist."},
+                "item": {"type": "string", "description": "complete/add: the item's label."},
+            },
+            "required": ["op", "channel_id"],
+        },
+    },
+    "dana4_workspace": {
+        "name": "dana4_workspace",
+        "description": (
+            "Workspace discovery and scheduling. op=list (no workspace_id), "
+            "params, agents (their capabilities), dms, workflows, "
+            "workflow_create (name, definition: YAML), automations, "
+            "automation_create (workflow_id, name, schedule_frequency: "
+            "daily|weekly|monthly), automation_delete (automation_id)."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "op": {
+                    "type": "string",
+                    "enum": [
+                        "list",
+                        "params",
+                        "agents",
+                        "dms",
+                        "workflows",
+                        "workflow_create",
+                        "automations",
+                        "automation_create",
+                        "automation_delete",
+                    ],
+                },
+                "workspace_id": _WS,
+                "name": {"type": "string"},
+                "definition": {"type": "string", "description": "workflow_create: raw YAML."},
+                "description": {"type": "string"},
+                "workflow_id": {"type": "string"},
+                "automation_id": {"type": "string"},
+                "schedule_frequency": {"type": "string", "enum": ["daily", "weekly", "monthly"]},
+                "schedule_day": {"type": "string"},
+                "schedule_time": {"type": "string", "description": "HH:MM, default 09:00."},
+                "schedule_timezone": {"type": "string", "description": "Default UTC."},
+            },
+            "required": ["op"],
+        },
+    },
+    "dana4_upload": {
+        "name": "dana4_upload",
+        "description": "Store a local file as an asset of a task (presign, upload, register).",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "The task the file belongs to."},
+                "path": {"type": "string", "description": "Local file path."},
+                "name": {"type": "string", "description": "Asset name; defaults to the file's name."},
+            },
+            "required": ["task_id", "path"],
         },
     },
 }
@@ -727,6 +975,10 @@ HANDLERS = {
     "dana4_task_create": dana4_task_create,
     "dana4_task_set_params": dana4_task_set_params,
     "dana4_search": dana4_search,
+    "dana4_task": dana4_task,
+    "dana4_plan": dana4_plan,
+    "dana4_workspace": dana4_workspace,
+    "dana4_upload": dana4_upload,
 }
 
 
@@ -780,4 +1032,8 @@ EMOJI = {
     "dana4_task_create": "🎫",
     "dana4_task_set_params": "🔧",
     "dana4_search": "🔍",
+    "dana4_task": "🗂️",
+    "dana4_plan": "☑️",
+    "dana4_workspace": "🏢",
+    "dana4_upload": "📎",
 }

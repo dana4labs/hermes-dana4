@@ -342,6 +342,40 @@ def test_task_create_posts_numbers_not_ids():
     }
 
 
+def test_new_endpoints():
+    c = Dana4Client(host="https://x.example", api_key="d4a_k")
+    sent = _capture(c)
+    b = "https://x.example/api-sdk/v1"
+    c.tasks_active(channel_id="ch")
+    c.task_get("t")
+    c.task_step_result("t", "s")
+    c.board("ws")
+    c.workspaces_list()
+    c.document_source("d")
+    c.document_messages("d")
+    c.document_move("/a", "/b", workspace_id="ws")
+    c.folder_create("/f", task_id="t")
+    c.workflow_create("ws", "n", definition="y")
+    got = [(r.get_method(), r.full_url) for r in sent[-10:]]
+    assert got == [
+        ("GET", b + "/tasks/active?channel_id=ch"),
+        ("GET", b + "/tasks/t"),
+        ("GET", b + "/tasks/t/steps/s/result"),
+        ("GET", b + "/workspaces/ws/board"),
+        ("GET", b + "/workspaces"),
+        ("GET", b + "/documents/d/source"),
+        ("GET", b + "/documents/d/messages"),
+        ("POST", b + "/documents/move"),
+        ("POST", b + "/folders"),
+        ("POST", b + "/workflows"),
+    ], got
+    assert json.loads(sent[-3].data) == {
+        "from": "/a",
+        "to": "/b",
+        "workspace_id": "ws",
+    }
+
+
 def main():
     real_urlopen = dana4_client.urllib.request.urlopen
     saved = {k: os.environ.get(k) for k in CREDS_KEYS + (CREDS_ENV_VAR,)}
@@ -358,6 +392,7 @@ def main():
             test_watch_flags_dms_and_drops_system_messages()
             test_client_matches_claude_plugin()
             test_task_create_posts_numbers_not_ids()
+            test_new_endpoints()
     finally:
         dana4_client.urllib.request.urlopen = real_urlopen
         for k, v in saved.items():

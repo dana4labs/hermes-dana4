@@ -230,9 +230,35 @@ class Dana4Client:
         """POST /tasks/take — claim next task (polling). {task,payload} | null."""
         return self._request("POST", "/tasks/take")
 
-    def tasks_active(self) -> List[Any]:
-        """POST /tasks/active — tasks currently assigned to you."""
-        return self._request("GET", "/tasks/active")
+    def tasks_active(self, channel_id: Optional[str] = None) -> List[Any]:
+        """GET /tasks/active — tasks currently assigned to you.
+
+        `channel_id` keeps only the tasks of that channel (a thread is a channel)."""
+        return self._request(
+            "GET",
+            "/tasks/active",
+            query={"channel_id": channel_id} if channel_id else None,
+        )
+
+    def task_get(self, task_id: str) -> Any:
+        """GET /tasks/{task_id} — the task's ticket and its whole description."""
+        return self._request("GET", f"/tasks/{task_id}")
+
+    def task_step_result(self, task_id: str, step_id: str) -> Any:
+        """GET /tasks/{task_id}/steps/{step_id}/result — a finished step's result
+        in the task's run (null until it has one)."""
+        return self._request(
+            "GET", f"/tasks/{task_id}/steps/{step_id}/result"
+        )
+
+    def board(self, workspace_id: str) -> List[Any]:
+        """GET /workspaces/{workspace_id}/board — the workspace's cards: in
+        progress, in review, and the unblocked todo ones."""
+        return self._request("GET", f"/workspaces/{workspace_id}/board")
+
+    def workspaces_list(self) -> List[Any]:
+        """GET /workspaces — the workspaces this agent is a member of."""
+        return self._request("GET", "/workspaces")
 
     def tasks_assigned(self) -> List[Any]:
         """POST /tasks/assigned — user-type tasks handed to you personally."""
@@ -308,6 +334,58 @@ class Dana4Client:
     def document_get_by_id(self, document_id: str) -> Any:
         """GET /documents/{document_id}."""
         return self._request("GET", f"/documents/{document_id}")
+
+    def document_source(self, document_id: str) -> Any:
+        """GET /documents/{document_id}/source — {url (signed), asset_id, s3_key}
+        of the document's source asset; 404 when it has none."""
+        return self._request("GET", f"/documents/{document_id}/source")
+
+    def document_messages(
+        self,
+        document_id: str,
+        since: Optional[str] = None,
+        until: Optional[str] = None,
+    ) -> List[Any]:
+        """GET /documents/{document_id}/messages — every thread on a document,
+        newest activity first (a ticket's comments). `since`/`until`: RFC 3339."""
+        query: Dict[str, str] = {}
+        if since is not None:
+            query["since"] = since
+        if until is not None:
+            query["until"] = until
+        return self._request(
+            "GET", f"/documents/{document_id}/messages", query=query or None
+        )
+
+    def document_move(
+        self,
+        from_path: str,
+        to_path: str,
+        task_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Any:
+        """POST /documents/move — like `mv`: into an existing folder, or rename.
+        Give ``task_id`` or ``workspace_id``."""
+        body: Dict[str, Any] = {"from": from_path, "to": to_path}
+        if task_id is not None:
+            body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
+        return self._request("POST", "/documents/move", body=body)
+
+    def folder_create(
+        self,
+        path: str,
+        task_id: Optional[str] = None,
+        workspace_id: Optional[str] = None,
+    ) -> Any:
+        """POST /folders — like `mkdir -p`. Give ``task_id`` or ``workspace_id``."""
+        body: Dict[str, Any] = {"path": path}
+        if task_id is not None:
+            body["task_id"] = task_id
+        if workspace_id is not None:
+            body["workspace_id"] = workspace_id
+        return self._request("POST", "/folders", body=body)
 
     def document_get_by_channel(self, channel_id: str) -> Any:
         """GET /channels/{channel_id}/document."""
@@ -559,6 +637,27 @@ class Dana4Client:
     def workflows_list(self, workspace_id: str) -> List[Any]:
         """GET /workspaces/{workspace_id}/workflows — list available workflows."""
         return self._request("GET", f"/workspaces/{workspace_id}/workflows")
+
+    def workflow_create(
+        self,
+        workspace_id: str,
+        name: str,
+        definition: Optional[str] = None,
+        description: Optional[str] = None,
+        params: Optional[Any] = None,
+    ) -> Any:
+        """POST /workflows — create a workspace workflow from a raw YAML definition."""
+        return self._request(
+            "POST",
+            "/workflows",
+            body={
+                "workspace_id": workspace_id,
+                "name": name,
+                "definition": definition,
+                "description": description,
+                "params": params,
+            },
+        )
 
     def automation_create(
         self,
