@@ -381,7 +381,9 @@ def dana4_document(args):
         return client.document_source(args["document_id"])
     if op == "messages":
         return client.document_messages(
-            args["document_id"], since=args.get("since"), until=args.get("until")
+            args["document_id"],
+            since=args.get("since"),
+            until=args.get("until"),
         )
     if op == "move":
         return client.document_move(
@@ -440,7 +442,9 @@ def dana4_plan(args):
     if op == "set":
         return client.channel_plan_set(args["channel_id"], args["plan"])
     if op == "complete":
-        return client.channel_plan_complete_item(args["channel_id"], args["item"])
+        return client.channel_plan_complete_item(
+            args["channel_id"], args["item"]
+        )
     if op == "add":
         return client.channel_plan_add_item(args["channel_id"], args["item"])
     return {"error": f"unknown op {op!r}"}
@@ -710,9 +714,18 @@ SCHEMAS = {
                     "type": "string",
                     "description": "For get_by_id, source and messages (a ticket's comment threads).",
                 },
-                "since": {"type": "string", "description": "messages: RFC 3339 lower bound."},
-                "until": {"type": "string", "description": "messages: RFC 3339 upper bound."},
-                "from_path": {"type": "string", "description": "move: the source path."},
+                "since": {
+                    "type": "string",
+                    "description": "messages: RFC 3339 lower bound.",
+                },
+                "until": {
+                    "type": "string",
+                    "description": "messages: RFC 3339 upper bound.",
+                },
+                "from_path": {
+                    "type": "string",
+                    "description": "move: the source path.",
+                },
                 "to_path": {
                     "type": "string",
                     "description": "move: an existing folder to move into, or the new path.",
@@ -882,9 +895,18 @@ SCHEMAS = {
                     ],
                 },
                 "task_id": {"type": "string", "description": "The task's id."},
-                "step_id": {"type": "string", "description": "step_result: the step."},
-                "capability": {"type": "string", "description": "claim: the capability to run."},
-                "channel_id": {"type": "string", "description": "active: only this channel's tasks."},
+                "step_id": {
+                    "type": "string",
+                    "description": "step_result: the step.",
+                },
+                "capability": {
+                    "type": "string",
+                    "description": "claim: the capability to run.",
+                },
+                "channel_id": {
+                    "type": "string",
+                    "description": "active: only this channel's tasks.",
+                },
                 "workspace_id": _WS,
             },
             "required": ["op"],
@@ -902,8 +924,14 @@ SCHEMAS = {
             "properties": {
                 "op": {"type": "string", "enum": ["set", "complete", "add"]},
                 "channel_id": {"type": "string", "description": "The channel."},
-                "plan": {"type": "string", "description": "set: the markdown checklist."},
-                "item": {"type": "string", "description": "complete/add: the item's label."},
+                "plan": {
+                    "type": "string",
+                    "description": "set: the markdown checklist.",
+                },
+                "item": {
+                    "type": "string",
+                    "description": "complete/add: the item's label.",
+                },
             },
             "required": ["op", "channel_id"],
         },
@@ -936,14 +964,26 @@ SCHEMAS = {
                 },
                 "workspace_id": _WS,
                 "name": {"type": "string"},
-                "definition": {"type": "string", "description": "workflow_create: raw YAML."},
+                "definition": {
+                    "type": "string",
+                    "description": "workflow_create: raw YAML.",
+                },
                 "description": {"type": "string"},
                 "workflow_id": {"type": "string"},
                 "automation_id": {"type": "string"},
-                "schedule_frequency": {"type": "string", "enum": ["daily", "weekly", "monthly"]},
+                "schedule_frequency": {
+                    "type": "string",
+                    "enum": ["daily", "weekly", "monthly"],
+                },
                 "schedule_day": {"type": "string"},
-                "schedule_time": {"type": "string", "description": "HH:MM, default 09:00."},
-                "schedule_timezone": {"type": "string", "description": "Default UTC."},
+                "schedule_time": {
+                    "type": "string",
+                    "description": "HH:MM, default 09:00.",
+                },
+                "schedule_timezone": {
+                    "type": "string",
+                    "description": "Default UTC.",
+                },
             },
             "required": ["op"],
         },
@@ -954,9 +994,15 @@ SCHEMAS = {
         "parameters": {
             "type": "object",
             "properties": {
-                "task_id": {"type": "string", "description": "The task the file belongs to."},
+                "task_id": {
+                    "type": "string",
+                    "description": "The task the file belongs to.",
+                },
                 "path": {"type": "string", "description": "Local file path."},
-                "name": {"type": "string", "description": "Asset name; defaults to the file's name."},
+                "name": {
+                    "type": "string",
+                    "description": "Asset name; defaults to the file's name.",
+                },
             },
             "required": ["task_id", "path"],
         },

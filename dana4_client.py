@@ -247,9 +247,7 @@ class Dana4Client:
     def task_step_result(self, task_id: str, step_id: str) -> Any:
         """GET /tasks/{task_id}/steps/{step_id}/result — a finished step's result
         in the task's run (null until it has one)."""
-        return self._request(
-            "GET", f"/tasks/{task_id}/steps/{step_id}/result"
-        )
+        return self._request("GET", f"/tasks/{task_id}/steps/{step_id}/result")
 
     def board(self, workspace_id: str) -> List[Any]:
         """GET /workspaces/{workspace_id}/board — the workspace's cards: in
